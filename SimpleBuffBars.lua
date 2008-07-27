@@ -2,16 +2,11 @@
 	Simple Buff Bars, Mayen/Amarand (Horde) from Icecrown (US) PvE
 ]]
 
-SimpleBB = LibStub("AceAddon-3.0"):NewAddon("SimpleBB", "AceEvent-3.0")
+SimpleBB = LibStub("AceAddon-3.0"):NewAddon("SimpleBB", "AceEvent-3.0", "AceBucket-3.0")
 
 local L = SimpleBBLocals
 
-local SML
-
-local buffTypes = {
-	temp = {r = 0.5, g = 0.0, b = 0.5},
-	buff = {r = 0.30, g = 0.50, b = 1.0},
-}
+local SML, MAINHAND_SLOT, OFFHAND_SLOT
 
 function SimpleBB:OnInitialize()
 	self.defaults = {
@@ -25,7 +20,6 @@ function SimpleBB:OnInitialize()
 				buffs = {
 					color = {r = 0.30, g = 0.50, b = 1.0},
 					texture = "Minimalist",
-					growUp = false,
 					sortBy = "timeleft",
 					iconPosition = "LEFT",
 					height = 16,
@@ -34,22 +28,16 @@ function SimpleBB:OnInitialize()
 					scale = 1.0,
 					alpha = 1.0,
 					spacing = 0,
-					fillTimeless = false,
 					colorByType = true,
-
 					anchorSpacing = 20,
 					anchorTo = "",
-					
 					showStack = true,
-					showRank = false,
-					
 					font = "Friz Quadrata TT",
 					fontSize = 12,
 				},
 				debuffs = {
 					color = {r = 0.30, g = 0.50, b = 1.0},
 					texture = "Minimalist",
-					growUp = false,
 					sortBy = "timeleft",
 					iconPosition = "LEFT",
 					height = 16,
@@ -58,11 +46,8 @@ function SimpleBB:OnInitialize()
 					scale = 1.0,
 					alpha = 1.0,
 					spacing = 0,
-					fillTimeless = false,
 					colorByType = true,
-
 					showStack = true,
-					showRank = false,
 					anchorTo = "buffs",
 					anchorSpacing = 10,
 					
@@ -92,6 +77,10 @@ function SimpleBB:OnInitialize()
 		self.groups[name].rows = {}
 	end
 	
+	-- Setup the SlotIDs for Mainhand/Offhands
+	MAINHAND_SLOT = GetInventorySlotInfo("MainHandSlot")
+	OFFHAND_SLOT = GetInventorySlotInfo("SecondaryHandSlot")
+	
 	-- Kill Blizzards buff frame
 	BuffFrame:UnregisterEvent("PLAYER_AURAS_CHANGED")
 	TemporaryEnchantFrame:Hide()
@@ -102,8 +91,8 @@ function SimpleBB:OnInitialize()
 		self = SimpleBB
 		self:UnregisterEvent("PLAYER_ENTEIRNG_WORLD")
 		self:RegisterEvent("PLAYER_AURAS_CHANGED")
-		self:RegisterEvent("UNIT_PORTRAIT_UPDATE", "UpdateWeapons")
-		self:RegisterEvent("UNIT_INVENTORY_CHANGED", "UpdateWeapons")
+		self:RegisterBucketEvent("UNIT_PORTRAIT_UPDATE", 0.25, "UpdateWeapons")
+		self:RegisterBucketEvent("UNIT_INVENTORY_CHANGED", 0.25, "UpdateWeapons")
 		self:RegisterEvent("MINIMAP_UPDATE_TRACKING", "UpdateTracking")
 
 		self:ReloadBars()
@@ -193,6 +182,7 @@ local function updateBar(row, group, config)
 	row:SetWidth(config.width)
 	row:SetHeight(config.height)
 	row:SetStatusBarTexture(texture)
+	row:Hide()
 	
 	row.bg:SetStatusBarTexture(texture)
 	
@@ -271,9 +261,9 @@ local function OnClick(self, mouseButton)
 	end
 	
 	if( self.type == "buffs" or self.type == "debuffs" ) then
-		CancelPlayerBuff(self.buffIndex)
-	elseif( self.type == "weapon-oh" or self.type == "weapon-mh" ) then
-		CancelItemTempEnchantment(self.buffIndex - 15)
+		CancelPlayerBuff(self.data.buffIndex)
+	elseif( self.type == "tempBuffs" ) then
+		CancelItemTempEnchantment(self.data.slotID - 15)
 	elseif( self.type == "tracking" ) then
 		ToggleDropDownMenu(1, nil, MiniMapTrackingDropDown, self, 0, -5)
 	end
@@ -282,9 +272,9 @@ end
 local function OnEnter(self)
 	GameTooltip:SetOwner(self, "ANCHOR_TOPLEFT")
 	if( self.type == "buffs" or self.type == "debuffs" ) then
-		GameTooltip:SetPlayerBuff(self.buffIndex)
-	elseif( self.type == "weapon-mh" or self.type == "weapon-oh" ) then
-		GameTooltip:SetInventoryItem("player", self.buffIndex)
+		GameTooltip:SetPlayerBuff(self.data.buffIndex)
+	elseif( self.type == "tempBuffs" ) then
+		GameTooltip:SetInventoryItem("player", self.data.slotID)
 	elseif( self.type == "tracking" ) then
 		GameTooltip:SetTracking()
 	end
@@ -307,8 +297,6 @@ function SimpleBB:CreateBar(parent)
 	frame:SetScript("OnMouseUp", OnClick)
 	frame:SetScript("OnEnter", OnEnter)
 	frame:SetScript("OnLeave", OnLeave)
-	frame:SetMinMaxValues(0, 1)
-	frame:SetValue(1)	
 	frame:Hide()
 	
 	frame.bg = CreateFrame("StatusBar", nil, frame)
@@ -316,7 +304,7 @@ function SimpleBB:CreateBar(parent)
 	frame.bg:SetValue(1)
 	frame.bg:SetAllPoints(frame)
 	frame.bg:SetFrameLevel(0)
-
+		
 	-- Create icon
 	frame.icon = frame:CreateTexture(nil, "ARTWORK")
 	
@@ -346,16 +334,16 @@ end
 
 -- Update visuals
 local function OnUpdate(self)
+	--Once WoTLK hits, will switch to using this system.
 	--local time = GetTime()
-	-- Check if times ran out and that we need to start fading it out
-	-- Once WoTLK hits, will switch to using this system.
 	--self.secondsLeft = self.secondsLeft - (time - self.lastUpdate)
 	--self.lastUpdate = time
+	
 	if( self.type == "buffs" or self.type == "debuffs" ) then
-		self.secondsLeft = GetPlayerBuffTimeLeft(self.buffIndex)
-	elseif( self.type == "weapon-oh" ) then
+		self.secondsLeft = GetPlayerBuffTimeLeft(self.data.buffIndex)
+	elseif( self.type == "tempBuff" and self.data.slotID == 17 ) then
 		self.secondsLeft = (select(4, GetWeaponEnchantInfo()) or 0) / 1000
-	elseif( self.type == "weapon-mh" ) then
+	elseif( self.type == "tempBuff" and self.data.slotID == 16 ) then
 		self.secondsLeft = (select(2, GetWeaponEnchantInfo()) or 0) / 1000
 	end
 	
@@ -391,14 +379,11 @@ local function OnUpdate(self)
 	self:SetValue(self.secondsLeft)
 end
 
--- Sort rows
-local function sortRows(a, b)
-	if( a.untilCanceled and a.untilCanceled == b.untilCanceled ) then
-		return a.name < b.name
-	end
-	
-	return a.sortID > b.sortID
-end
+-- Update a single row
+local buffTypes = {
+	temp = {r = 0.5, g = 0.0, b = 0.5},
+	buff = {r = 0.30, g = 0.50, b = 1.0},
+}
 
 local function updateRow(row, config, data)
 	-- Set name/rank
@@ -411,74 +396,87 @@ local function updateRow(row, config, data)
 	else
 		row.text:SetText(data.name)
 	end
-
+	
 	-- Set icon
 	row.icon:SetWidth(config.height)
 	row.icon:SetHeight(config.height)
 	row.icon:SetTexture(data.icon)
 	row.icon:Show()
 	
-	if( data.type == "weapon-mh" or data.type == "weapon-oh" ) then
-		if( config.colorByType ) then
-			row:SetStatusBarColor(buffTypes.temp.r, buffTypes.temp.g, buffTypes.temp.b, 0.80)
-			row.bg:SetStatusBarColor(buffTypes.temp.r, buffTypes.temp.g, buffTypes.temp.b, 0.30)
-		end
-		
+	local color
+	if( data.type == "tempBuffs" ) then
+		color = buffTypes.temp
 		row.iconBorder:SetTexture("Interface\\Buttons\\UI-TempEnchant-Border")
 		row.iconBorder:Show()
 	elseif( data.type == "debuffs" or data.buffIndex == -1 ) then
+		color = DebuffTypeColor[data.buffType] or DebuffTypeColor.none
+
 		row.iconBorder:SetTexture("Interface\\Buttons\\UI-Debuff-Overlays")
 		row.iconBorder:SetTexCoord(0.296875, 0.5703125, 0, 0.515625)
-		
-		local color = DebuffTypeColor[data.buffType] or DebuffTypeColor.none
 		row.iconBorder:SetVertexColor(color.r, color.g, color.b)
 		row.iconBorder:Show()
-		
-		if( config.colorByType ) then
-			row:SetStatusBarColor(color.r, color.g, color.b, 0.80)
-			row.bg:SetStatusBarColor(color.r, color.g, color.b, 0.30)
-		end
 	elseif( data.type == "tracking" and data.trackingType ~= "spell" ) then
+		color = buffTypes.buff
+
 		row.iconBorder:SetTexture("Interface\\Buttons\\UI-Debuff-Overlays")
 		row.iconBorder:SetTexCoord(0.296875, 0.5703125, 0, 0.515625)
-		row.iconBorder:SetVertexColor(0.74, 0.74, 0.74)
+		row.iconBorder:SetVertexColor(0.81, 0.81, 0.81)
 		row.iconBorder:Show()
-
-		if( config.colorByType ) then
-			row:SetStatusBarColor(buffTypes.buff.r, buffTypes.buff.g, buffTypes.buff.b, 0.80)
-			row.bg:SetStatusBarColor(buffTypes.buff.r, buffTypes.buff.g, buffTypes.buff.b, 0.30)
-		end
 	else
-		if( config.colorByType ) then
-			row:SetStatusBarColor(buffTypes.buff.r, buffTypes.buff.g, buffTypes.buff.b, 0.80)
-			row.bg:SetStatusBarColor(buffTypes.buff.r, buffTypes.buff.g, buffTypes.buff.b, 0.30)
-		end
-		
+		color = buffTypes.buff
 		row.iconBorder:Hide()
 	end
 	
+	-- Color bar by the debuff type
+	if( color and config.colorByType ) then
+		row:SetStatusBarColor(color.r, color.g, color.b, 0.80)
+		row.bg:SetStatusBarColor(color.r, color.g, color.b, 0.30)
+	end
+
 	-- Setup for sorting
 	local time = GetTime()
-	row.buffIndex = data.buffIndex
 	row.enabled = true
 	row.type = data.type
-	row.buffIndex = data.buffIndex
+	row.data = data
 	
 	-- Don't use an on update if it has no timer
 	if( not data.untilCanceled ) then
 		row.secondsLeft = data.endTime - time
-		row.endTime = data.endTime
+		row.endTime = data.endTime or 0
 		row.lastUpdate = time
 
 		row:SetMinMaxValues(0, data.startSeconds)
 		row:SetScript("OnUpdate", OnUpdate)
 		row.timer:Show()
 	else
+		row.endTime = 0
+		
 		row:SetScript("OnUpdate", nil)
 		row:SetMinMaxValues(0, 1)
 		row:SetValue(config.fillTimeless and 1 or 0)
 		row.timer:Hide()
 	end
+end
+
+-- Sort rows
+local function sortRows(a, b)
+	if( not a.enabled ) then
+		return false
+	elseif( not b.enabled ) then
+		return true
+	end
+	
+	if( a.data.type == "tracking" ) then
+		return true
+	elseif( b.data.type == "tracking" ) then
+		return false
+	end
+	
+	if( a.data.untilCanceled and b.data.untilCanceled ) then
+		return a.data.name < b.data.name
+	end
+	
+	return a.sortID > b.sortID
 end
 
 -- Update display for the passed time
@@ -490,8 +488,8 @@ function SimpleBB:UpdateDisplay(displayID)
 	-- Reset all rows quickly
 	for _, row in pairs(display.rows) do
 		row.enabled = nil
-		row.sortID = "0"
-		row.untilCanceled = nil
+		row.data = nil
+		
 		row:ClearAllPoints()
 		row:Hide()
 	end
@@ -508,8 +506,6 @@ function SimpleBB:UpdateDisplay(displayID)
 			updateRow(row, config, data)
 
 			if( data.untilCanceled ) then
-				row.untilCanceled = true
-				row.name = data.name
 				row.sortID = string.format("8%s", data.name)
 			else
 				row.sortID = string.format("6%s", row.endTime)
@@ -521,6 +517,17 @@ function SimpleBB:UpdateDisplay(displayID)
 	
 	-- Merge temp weapon enchants and tracking into buffs
 	if( displayID == "buffs") then
+		-- Tracking
+		if( self.activeTrack.name ) then
+			if( not display.rows[buffID] ) then
+				display.rows[buffID] = self:CreateBar(display)
+			end
+
+			local row = display.rows[buffID]
+			updateRow(row, config, self.activeTrack)
+			buffID = buffID + 1
+		end
+
 		-- Temp weapon enchants
 		for id, data in pairs(self.tempBuffs) do
 			if( data.enabled ) then
@@ -532,24 +539,8 @@ function SimpleBB:UpdateDisplay(displayID)
 				updateRow(row, config, data)
 
 				row.sortID = string.format("7%s", row.endTime)
-				
 				buffID = buffID + 1
 			end
-		end
-		
-		-- Tracking
-		if( self.activeTrack.name ) then
-			if( not display.rows[buffID] ) then
-				display.rows[buffID] = self:CreateBar(display)
-			end
-
-			local row = display.rows[buffID]
-			updateRow(row, config, self.activeTrack)
-			
-			row.trackingType = self.activeTrack.trackingType
-			row.sortID = "9"
-
-			buffID = buffID + 1
 		end
 	end
 	
@@ -561,8 +552,8 @@ function SimpleBB:UpdateDisplay(displayID)
 
 		local row = display.rows[buffID]
 		updateRow(row, config, self.example[displayID])
+		
 		row.sortID = string.format("%s", self.example[displayID].endTime)
-
 		buffID = buffID + 1
 	end
 	
@@ -580,7 +571,7 @@ function SimpleBB:UpdateDisplay(displayID)
 	-- Position
 	local lastRow = 0
 	for id, row in pairs(display.rows) do
-		if( row.enabled ) then
+		if( row.enabled and id <= config.maxRows ) then
 			-- Position
 			if( id > 1 ) then
 				if( not config.growUp ) then
@@ -594,12 +585,8 @@ function SimpleBB:UpdateDisplay(displayID)
 				row:SetPoint("TOPLEFT", display, "BOTTOMLEFT", display.barOffset, 0)
 			end
 			
-			if( id <= config.maxRows ) then
-				lastRow = id
-				row:Show()
-			else
-				row:Hide()
-			end
+			lastRow = id
+			row:Show()
 		else
 			row:Hide()
 		end
@@ -643,7 +630,7 @@ end
 
 -- Update auras
 function SimpleBB:UpdateAuras(type, filter)
-	for _, data in pairs(self[type]) do data.enabled = nil end
+	for _, data in pairs(self[type]) do data.enabled = nil; data.untilCanceled = nil; end
 		
 	local buffID = 1
 	while( true ) do
@@ -725,72 +712,52 @@ function SimpleBB:ParseName(slotID)
 end
 
 -- Update temp weapon enchants
+function SimpleBB:UpdateTempEnchant(id, slotID, hasEnchant, timeLeft, charges)
+	if( not hasEnchant ) then
+		self.tempBuffs[id].enabled = nil
+		self.tempBuffs[id].untilCanceled = nil
+		return
+	end
+	
+	local name, rank = self:ParseName(slotID)
+	local tempBuff = self.tempBuffs[id]
+	-- When the players entering/leaving the world, we get a bad return on the name/rank
+	-- So we only update it if we found one, and thus fixes it!
+	if( name ) then
+		tempBuff.name = name
+		tempBuff.rank = rank
+	end
+
+	local timeLeft = timeLeft / 1000
+
+	tempBuff.enabled = true
+	tempBuff.type = "tempBuffs"
+	tempBuff.slotID = slotID
+
+	tempBuff.timeLeft = timeLeft
+	tempBuff.endTime = GetTime() + timeLeft
+	tempBuff.startSeconds = self:GetStartTime("tempBuffs", name, rank, timeLeft)
+
+	tempBuff.icon = GetInventoryItemTexture("player", slotID)
+	tempBuff.stack = charges or 0
+end
+
 function SimpleBB:UpdateWeapons()
 	if( not self.db.profile.showTemp ) then
 		return
 	end
 	
-	self.tempBuffs[1].enabled = nil
-	self.tempBuffs[2].enabled = nil
-	
-	local changed
-	local id = 1
 	local hasMain, mainTimeLeft, mainCharges, hasOff, offTimeLeft, offCharges = GetWeaponEnchantInfo()
-	if( hasMain ) then
-		local name, rank = self:ParseName(16)
-		local tempBuff = self.tempBuffs[id]
-		if( name ) then
-			tempBuff.name = name
-			tempBuff.rank = rank
-		end
-		
-		local timeLeft = mainTimeLeft / 1000
-		local endTime = GetTime() + timeLeft
-
-		if( not tempBuff.endTime or endTime >= tempBuff.endTime ) then
-			changed = true
-		end
-
-		tempBuff.timeLeft = timeLeft
-		tempBuff.endTime = endTime
-		tempBuff.stack = mainCharges or 0
-		tempBuff.startSeconds = self:GetStartTime("tempBuffs", name, rank, timeLeft)
-		tempBuff.type = "weapon-mh"
-		tempBuff.buffIndex = 16
-		tempBuff.icon = GetInventoryItemTexture("player", 16)
-		tempBuff.enabled = true
-
-		id = id + 1
-	end
-
-	if( hasOff ) then
-		local name, rank = self:ParseName(17)
-		local tempBuff = self.tempBuffs[id]
-		if( name ) then
-			tempBuff.name = name
-			tempBuff.rank = rank
-		end
-
-		local timeLeft = offTimeLeft / 1000
-		local endTime = GetTime() + timeLeft
-
-		if( not tempBuff.endTime or endTime >= tempBuff.endTime ) then
-			changed = true
-		end
-
-		tempBuff.timeLeft = timeLeft
-		tempBuff.endTime = endTime
-		tempBuff.stack = offCharges or 0
-		tempBuff.startSeconds = self:GetStartTime("tempBuffs", name, rank, timeLeft)
-		tempBuff.type = "weapon-oh"
-		tempBuff.buffIndex = 17
-		tempBuff.icon = GetInventoryItemTexture("player", 17)
-		tempBuff.name = name
-		tempBuff.rank = rank
-		tempBuff.enabled = true
-	end
 	
-	if( changed ) then
+	self:UpdateTempEnchant(1, MAINHAND_SLOT, hasMain, mainTimeLeft, mainCharges)
+	if( self.tempBuffs[1].enabled ) then
+		self:UpdateTempEnchant(2, OFFHAND_SLOT, hasOff, offTimeLeft, offCharges)
+	else
+		self:UpdateTempEnchant(1, OFFHAND_SLOT, hasOff, offTimeLeft, offCharges)
+	end
+
+	-- Update if needed
+	if( self.tempBuffs[1].enabled or self.tempBuffs[2].enabled ) then
 		self:UpdateDisplay("buffs")
 	end
 end

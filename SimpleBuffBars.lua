@@ -145,7 +145,7 @@ end
 local function OnShow(self)
 	local config = SimpleBB.db.profile.groups[self.name]
 	if( config.anchorTo and config.anchorTo ~= self.name and SimpleBB.groups[config.anchorTo] ) then
-		local spacing = config.anchorSpacing
+		local spacing = -config.anchorSpacing
 		if( SimpleBB.db.profile.groups[config.anchorTo].growUp ) then
 			spacing = config.anchorSpacing
 		end

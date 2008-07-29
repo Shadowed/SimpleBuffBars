@@ -224,7 +224,7 @@ local function createAnchorOptions(group)
 					type = "range",
 					name = L["Spacing"],
 					desc = L["How far apart this anchor should be from the one it's anchored to, does not apply if anchor to is set to none."],
-					min = -50, max = 50, step = 1,
+					min = 0, max = 50, step = 1,
 					set = setNumber,
 					arg = string.format("groups.%s.anchorSpacing", group),
 				},
@@ -265,34 +265,52 @@ local function createAnchorOptions(group)
 					name = "",
 					type = "description",
 				},
-				colorType = {
-					order = 4,
-					type = "toggle",
-					name = L["Color by type"],
-					desc = L["Sets the bar color to the buff type, if it's a buff light blue, temporary weapon enchants purple, debuffs will be colored by magic type, or red if none."],
-					arg = string.format("groups.%s.colorByType", group),
-				},
-				color = {
-					order = 5,
-					type = "color",
-					name = L["Color"],
-					desc = L["Bar color and background color, if color by buff type isn't enabled."],
-					set = setColor,
-					get = getColor,
-					arg = string.format("groups.%s.color", group),
-				},
-				sep = {
-					order = 6,
-					name = "",
-					type = "description",
-				},
 				texture = {
-					order = 7,
+					order = 4,
 					type = "select",
 					name = L["Texture"],
 					dialogControl = "LSM30_Statusbar",
 					values = "GetTextures",
 					arg = string.format("groups.%s.texture", group),
+				},
+				color = {
+					order = 5,
+					type = "group",
+					inline = true,
+					name = L["Colors"],
+					args = {
+						colorType = {
+							order = 1,
+							type = "toggle",
+							name = L["Color by type"],
+							desc = L["Sets the bar color to the buff type, if it's a buff light blue, temporary weapon enchants purple, debuffs will be colored by magic type, or red if none."],
+							arg = string.format("groups.%s.colorByType", group),
+						},
+						sep = {
+							order = 2,
+							name = "",
+							type = "description",
+							width = "full",
+						},
+						baseColor = {
+							order = 3,
+							type = "color",
+							name = L["Color"],
+							desc = L["Bar color and background color, if color by type is enabled then this only applies to buffs and tracking."],
+							set = setColor,
+							get = getColor,
+							arg = string.format("groups.%s.color", group),
+						},
+						tempColor = {
+							order = 4,
+							type = "color",
+							name = L["Temporary buff color"],
+							desc = L["Bar and background color for temporary weapon enchants, only used if color by type is enabled."],
+							set = setColor,
+							get = getColor,
+							arg = string.format("groups.%s.tempColor", group),
+						},
+					},
 				},
 			},
 		},
@@ -428,6 +446,8 @@ local function loadOptions()
 		handler = Config,
 		args = createAnchorOptions("debuffs"),
 	}
+	
+	options.args.debuffs.args.bar.args.color.args.tempColor = nil
 
 	-- DB Profiles
 	options.args.profile = LibStub("AceDBOptions-3.0"):GetOptionsTable(SimpleBB.db)

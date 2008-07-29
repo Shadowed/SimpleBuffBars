@@ -21,6 +21,7 @@ libs\AceConfig-3.0\AceConfig-3.0.xml
 localization.enUS.lua
 localization.deDE.lua
 localization.frFR.lua
+localization.zhCN.lua
 
 SimpleBuffBars.lua
 config.lua

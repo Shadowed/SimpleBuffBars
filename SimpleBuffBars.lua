@@ -18,6 +18,7 @@ function SimpleBB:OnInitialize()
 			
 			groups = {
 				buffs = {
+					tempColor = {r = 0.5, g = 0.0, b = 0.5},
 					color = {r = 0.30, g = 0.50, b = 1.0},
 					texture = "Minimalist",
 					sortBy = "timeleft",
@@ -144,7 +145,12 @@ end
 local function OnShow(self)
 	local config = SimpleBB.db.profile.groups[self.name]
 	if( config.anchorTo and config.anchorTo ~= self.name and SimpleBB.groups[config.anchorTo] ) then
-		self:SetPoint("TOPLEFT", SimpleBB.groups[config.anchorTo].container, "BOTTOMLEFT", 0, -config.anchorSpacing)
+		local spacing = config.anchorSpacing
+		if( SimpleBB.db.profile.groups[config.anchorTo].growUp ) then
+			spacing = config.anchorSpacing
+		end
+		
+		self:SetPoint("TOPLEFT", SimpleBB.groups[config.anchorTo].container, "BOTTOMLEFT", 0, spacing)
 		self:SetMovable(false)
 	elseif( config.position ) then
 		local scale = self:GetEffectiveScale()
@@ -252,6 +258,13 @@ local function OnDragStop(self)
 
 		local scale = parent:GetEffectiveScale()
 		SimpleBB.db.profile.groups[parent.name].position = { x = parent:GetLeft() * scale, y = parent:GetTop() * scale }
+		
+		if( parent.queueUpdate ) then
+			parent.queueUpdate = nil
+			
+			SimpleBB:UpdateDisplay("buffs")
+			SimpleBB:UpdateDisplay("debuffs")
+		end
 	end
 end
 
@@ -381,7 +394,6 @@ end
 
 -- Update a single row
 local buffTypes = {
-	temp = {r = 0.5, g = 0.0, b = 0.5},
 	buff = {r = 0.30, g = 0.50, b = 1.0},
 }
 
@@ -405,7 +417,7 @@ local function updateRow(row, config, data)
 	
 	local color
 	if( data.type == "tempBuffs" ) then
-		color = buffTypes.temp
+		color = config.tempColor
 		row.iconBorder:SetTexture("Interface\\Buttons\\UI-TempEnchant-Border")
 		row.iconBorder:Show()
 	elseif( data.type == "debuffs" or data.buffIndex == -1 ) then
@@ -484,6 +496,12 @@ function SimpleBB:UpdateDisplay(displayID)
 	local display = self.groups[displayID]
 	local buffs = self[displayID]
 	local config = self.db.profile.groups[displayID]
+	
+	-- If we're in the process of moving the frame, stop updating until it's done to prevent any issues
+	if( display.isMoving ) then
+		display.queueUpdate = true
+		return
+	end
 	
 	-- Reset all rows quickly
 	for _, row in pairs(display.rows) do

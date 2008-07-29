@@ -45,12 +45,16 @@ SimpleBBLocals = {
 	["Height"] = "Height",
 	["Width"] = "Width",
 	["Texture"] = "Texture",
+	["Colors"] = "Colors",
 	
 	["Color by type"] = "Color by type",
 	["Sets the bar color to the buff type, if it's a buff light blue, temporary weapon enchants purple, debuffs will be colored by magic type, or red if none."] = "Sets the bar color to the buff type, if it's a buff light blue, temporary weapon enchants purple, debuffs will be colored by magic type, or red if none.",
 	
 	["Color"] = "Color",
-	["Bar color and background color, if color by buff type isn't enabled."] = "Bar color and background color, if color by buff type isn't enabled.",
+	["Bar color and background color, if color by type is enabled then this only applies to buffs and tracking."] = "Bar color and background color, if color by type is enabled then this only applies to buffs and tracking.",
+	
+	["Temporary buff color"] = "Temporary buff color",
+	["Bar and background color for temporary weapon enchants, only used if color by type is enabled."] = "Bar and background color for temporary weapon enchants, only used if color by type is enabled.",
 	
 	["Fill timeless buffs"] = "Fill timeless buffs",
 	["Buffs without a duration will have the status bar shown as filled in, instead of empty."] = "Buffs without a duration will have the status bar shown as filled in, instead of empty.",

@@ -170,7 +170,7 @@ local backdrop = {bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
 
 function SimpleBB:CreateGroup(name)
 	-- Set defaults
-	local frame = CreateFrame("Frame")
+	local frame = CreateFrame("Frame", nil, UIParent)
 	frame:SetMovable(true)
 	frame:SetScript("OnShow", OnShow)
 	frame:Hide()

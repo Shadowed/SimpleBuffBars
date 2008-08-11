@@ -7,6 +7,9 @@ SimpleBB = LibStub("AceAddon-3.0"):NewAddon("SimpleBB", "AceEvent-3.0", "AceBuck
 local L = SimpleBBLocals
 
 local SML, MAINHAND_SLOT, OFFHAND_SLOT
+local mainEnabled, offEnabled
+local frame = CreateFrame("Frame")
+
 
 function SimpleBB:OnInitialize()
 	self.defaults = {
@@ -60,6 +63,9 @@ function SimpleBB:OnInitialize()
 	}
 
 	self.db = LibStub:GetLibrary("AceDB-3.0"):New("SimpleBBDB", self.defaults)
+	self.db.RegisterCallback(self, "OnProfileChanged", "Reload")
+	self.db.RegisterCallback(self, "OnProfileCopied", "Reload")
+	self.db.RegisterCallback(self, "OnProfileReset", "Reload")
 
 	self.revision = tonumber(string.match("$Revision: 811 $", "(%d+)") or 1)
 	
@@ -92,14 +98,17 @@ function SimpleBB:OnInitialize()
 		self = SimpleBB
 		self:UnregisterEvent("PLAYER_ENTEIRNG_WORLD")
 		self:RegisterEvent("PLAYER_AURAS_CHANGED")
-		self:RegisterBucketEvent("UNIT_PORTRAIT_UPDATE", 0.25, "UpdateWeapons")
-		self:RegisterBucketEvent("UNIT_INVENTORY_CHANGED", 0.25, "UpdateWeapons")
 		self:RegisterEvent("MINIMAP_UPDATE_TRACKING", "UpdateTracking")
 
 		self:ReloadBars()
-
+		
+		if( self.db.profile.showTemp ) then
+			frame:Show()
+		else
+			frame:Hide()
+		end
+		
 		self:PLAYER_AURAS_CHANGED()
-		self:UpdateWeapons()
 		self:UpdateTracking()
 	end)
 end
@@ -129,12 +138,14 @@ function SimpleBB:Reload()
 	if( not self.db.profile.showTemp ) then
 		self.tempBuffs[1].enabled = nil
 		self.tempBuffs[2].enabled = nil
+		frame:Hide()
+	else
+		frame:Show()
 	end
 	
 	self:ReloadBars()
 
 	self:PLAYER_AURAS_CHANGED()
-	self:UpdateWeapons()
 	self:UpdateTracking()
 	
 	self:UpdateDisplay("buffs")
@@ -211,6 +222,7 @@ local function updateBar(row, group, config)
 	row.text:SetShadowOffset(1, -1)
 	row.text:SetShadowColor(0, 0, 0, 1)
 	row.text:SetHeight(config.height)
+	row.text:SetWidth(config.width - 40)
 end
 
 -- Reload everything in positioning and such
@@ -360,6 +372,8 @@ local function OnUpdate(self)
 		self.secondsLeft = (select(2, GetWeaponEnchantInfo()) or 0) / 1000
 	end
 	
+	self:SetValue(self.secondsLeft)
+
 	-- Timer text, need to see if this can be optimized a bit later
 	--[[
 	local hour = floor(self.secondsLeft / 3600)
@@ -388,8 +402,6 @@ local function OnUpdate(self)
 	else
 		self.timer:SetFormattedText("%02d:%02d", minutes > 0 and minutes or 0, seconds)
 	end
-
-	self:SetValue(self.secondsLeft)
 end
 
 -- Update a single row
@@ -760,26 +772,6 @@ function SimpleBB:UpdateTempEnchant(id, slotID, hasEnchant, timeLeft, charges)
 	tempBuff.stack = charges or 0
 end
 
-function SimpleBB:UpdateWeapons()
-	if( not self.db.profile.showTemp ) then
-		return
-	end
-	
-	local hasMain, mainTimeLeft, mainCharges, hasOff, offTimeLeft, offCharges = GetWeaponEnchantInfo()
-	
-	self:UpdateTempEnchant(1, MAINHAND_SLOT, hasMain, mainTimeLeft, mainCharges)
-	if( self.tempBuffs[1].enabled ) then
-		self:UpdateTempEnchant(2, OFFHAND_SLOT, hasOff, offTimeLeft, offCharges)
-	else
-		self:UpdateTempEnchant(1, OFFHAND_SLOT, hasOff, offTimeLeft, offCharges)
-	end
-
-	-- Update if needed
-	if( self.tempBuffs[1].enabled or self.tempBuffs[2].enabled ) then
-		self:UpdateDisplay("buffs")
-	end
-end
-
 -- Update player buff/debuffs
 function SimpleBB:PLAYER_AURAS_CHANGED()
 	self:UpdateAuras("buffs", "HELPFUL|PASSIVE")
@@ -788,3 +780,26 @@ function SimpleBB:PLAYER_AURAS_CHANGED()
 	self:UpdateDisplay("buffs")
 	self:UpdateDisplay("debuffs")
 end
+
+-- Update temp weapons
+local timeElapsed = 0
+frame:SetScript("OnUpdate", function(self, elapsed)
+	timeElapsed = timeElapsed + elapsed
+	
+	if( timeElapsed >= 1 ) then
+		timeElapsed = 0
+
+		local hasMain, mainTimeLeft, mainCharges, hasOff, offTimeLeft, offCharges = GetWeaponEnchantInfo()
+		local self = SimpleBB
+		
+		self:UpdateTempEnchant(1, MAINHAND_SLOT, hasMain, mainTimeLeft, mainCharges)
+		if( self.tempBuffs[1].enabled ) then
+			self:UpdateTempEnchant(2, OFFHAND_SLOT, hasOff, offTimeLeft, offCharges)
+		else
+			self:UpdateTempEnchant(1, OFFHAND_SLOT, hasOff, offTimeLeft, offCharges)
+		end
+
+		-- Update if needed
+		self:UpdateDisplay("buffs")
+	end
+end)

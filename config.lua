@@ -196,13 +196,13 @@ local function createAnchorOptions(group)
 					arg = string.format("groups.%s.maxRows", group),
 				},
 				]]
-				spacing = {
+				sorting = {
 					order = 7,
-					type = "range",
-					name = L["Row spacing"],
-					desc = L["How far apart each timer bar should be."],
-					min = -20, max = 20, step = 1,
-					arg = string.format("groups.%s.spacing", group),
+					type = "select",
+					name = L["Buff sorting"],
+					desc = L["Sorting information\nTime Left:\nTracking > Auras > Temporary weapon enchant > Buffs by time left\n\nOrder gained:\nTracking > Temporary weapon enchant > Auras > Buffs by order added."],
+					values = {["timeleft"] = L["Time left"], ["index"] = L["Order gained"]},
+					arg = string.format("groups.%s.sortBy", group),
 				},
 				icon = {
 					order = 8,
@@ -210,6 +210,14 @@ local function createAnchorOptions(group)
 					name = L["Icon position"],
 					values = {["LEFT"] = L["Left"], ["RIGHT"] = L["Right"]},
 					arg = string.format("groups.%s.iconPosition", group),
+				},
+				spacing = {
+					order = 9,
+					type = "range",
+					name = L["Row spacing"],
+					desc = L["How far apart each timer bar should be."],
+					min = -20, max = 20, step = 1,
+					arg = string.format("groups.%s.spacing", group),
 				},
 			}
 		},

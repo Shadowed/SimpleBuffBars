@@ -76,6 +76,12 @@ SimpleBBLocals = {
 	["Spacing"] = "Spacing",
 	["How far apart this anchor should be from the one it's anchored to, does not apply if anchor to is set to none."] = "How far apart this anchor should be from the one it's anchored to, does not apply if anchor to is set to none.",
 	
+	["Buff sorting"] = "Buff sorting",
+	["Time left"] = "Time left",
+	["Order gained"] = "Order gained",
+	["Sorting information\nTime Left:\nTracking > Auras > Temporary weapon enchant > Buffs by time left\n\nOrder gained:\nTracking > Temporary weapon enchant > Auras > Buffs by order added."] = "Sorting information\nTime Left:\nTracking > Auras > Temporary weapon enchant > Buffs by time left\n\nOrder gained:\nTracking > Temporary weapon enchant > Auras > Buffs by order added.",
+	
+	
 	["Anchor to"] = "Anchor to",
 	["Lets you anchor %ss to another anchor where it'll be shown below it and positioned so that they never overlap."] = "Lets you anchor %ss to another anchor where it'll be shown below it and positioned so that they never overlap.",
 	

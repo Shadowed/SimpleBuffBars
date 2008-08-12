@@ -430,6 +430,7 @@ local function updateRow(row, config, data)
 	local color
 	if( data.type == "tempBuffs" ) then
 		color = config.tempColor
+		row.iconBorder:SetTexCoord(0, 0, 0, 0)
 		row.iconBorder:SetTexture("Interface\\Buttons\\UI-TempEnchant-Border")
 		row.iconBorder:Show()
 	elseif( data.type == "debuffs" or data.buffIndex == -1 ) then
@@ -482,26 +483,67 @@ local function updateRow(row, config, data)
 	end
 end
 
--- Sort rows
-local function sortRows(a, b)
-	if( not a.enabled ) then
-		return false
-	elseif( not b.enabled ) then
-		return true
-	end
-	
-	if( a.data.type == "tracking" ) then
-		return true
-	elseif( b.data.type == "tracking" ) then
-		return false
-	end
-	
-	if( a.data.untilCanceled and b.data.untilCanceled ) then
-		return a.data.name < b.data.name
-	end
-	
-	return a.sortID > b.sortID
-end
+-- This is fairly ugly, I'm not exactly sure how I want to clean it up yet.
+-- I think I'll go with some sort of single index I can sort by, and manipulate that based on setting
+-- In fact, maybe I should turn this into a loadstring so I don't have to repeat the code, that also means
+-- I don't have to load the functions when you probably won't need them 
+local sorting = {
+	["timeleft"] = function(a, b)
+		if( not b or not a.enabled ) then
+			return false
+		elseif( not b.enabled ) then
+			return true
+		end
+		
+		if( a.data.type == "tracking" ) then
+			return true
+		elseif( b.data.type == "tracking" ) then
+			return false
+		end
+		
+		if( a.data.untilCanceled and b.data.untilCanceled ) then
+			return a.data.name < b.data.name
+		elseif( a.data.untilCanceled ) then
+			return true
+		elseif( b.data.untilCanceled ) then
+			return false
+		end
+
+		if( a.data.type == "tempBuffs" and b.data.type == "tempBuffs" ) then
+			return a.data.slotID < b.data.slotID
+		elseif( a.data.type == "tempBuffs" ) then
+			return true
+		elseif( b.data.type == "tempBuffs" ) then
+			return false
+		end
+		
+		return a.data.endTime > b.data.endTime
+
+	end,
+	["index"] = function(a, b)
+		if( not b or not a.enabled ) then
+			return false
+		elseif( not b.enabled ) then
+			return true
+		end
+		
+		if( a.data.type == "tracking" ) then
+			return true
+		elseif( b.data.type == "tracking" ) then
+			return false
+		end
+		
+		if( a.data.type == "tempBuffs" and b.data.type == "tempBuffs" ) then
+			return a.data.slotID < b.data.slotID
+		elseif( a.data.type == "tempBuffs" ) then
+			return true
+		elseif( b.data.type == "tempBuffs" ) then
+			return false
+		end
+		
+		return a.data.buffIndex < b.data.buffIndex
+	end,
+}
 
 -- Update display for the passed time
 function SimpleBB:UpdateDisplay(displayID)
@@ -534,13 +576,6 @@ function SimpleBB:UpdateDisplay(displayID)
 
 			local row = display.rows[buffID]
 			updateRow(row, config, data)
-
-			if( data.untilCanceled ) then
-				row.sortID = string.format("8%s", data.name)
-			else
-				row.sortID = string.format("6%s", row.endTime)
-			end
-
 			buffID = buffID + 1
 		end
 	end
@@ -567,8 +602,6 @@ function SimpleBB:UpdateDisplay(displayID)
 
 				local row = display.rows[buffID]
 				updateRow(row, config, data)
-
-				row.sortID = string.format("7%s", row.endTime)
 				buffID = buffID + 1
 			end
 		end
@@ -582,8 +615,6 @@ function SimpleBB:UpdateDisplay(displayID)
 
 		local row = display.rows[buffID]
 		updateRow(row, config, self.example[displayID])
-		
-		row.sortID = string.format("%s", self.example[displayID].endTime)
 		buffID = buffID + 1
 	end
 	
@@ -596,7 +627,7 @@ function SimpleBB:UpdateDisplay(displayID)
 	display:Show()
 	
 	-- Sort
-	table.sort(display.rows, sortRows)
+	table.sort(display.rows, sorting[config.sortBy])
 	
 	-- Position
 	local lastRow = 0

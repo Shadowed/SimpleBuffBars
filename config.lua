@@ -171,7 +171,7 @@ local function createAnchorOptions(group)
 					type = "range",
 					name = L["Display scale"],
 					desc = L["How big the actual timers should be."],
-					min = 0, max = 2, step = 0.1,
+					min = 0, max = 2, step = 0.01,
 					arg = string.format("groups.%s.scale", group),
 				},
 				alpha = {

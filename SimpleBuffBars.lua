@@ -520,11 +520,11 @@ local sorting = {
 			return false
 		end
 		
-		if( a.untilCanceled and b.untilCanceled ) then
+		if( a.untilCancelled and b.untilCancelled ) then
 			return a.name < b.name
-		elseif( a.untilCanceled ) then
+		elseif( a.untilCancelled ) then
 			return true
-		elseif( b.untilCanceled ) then
+		elseif( b.untilCancelled ) then
 			return false
 		end
 

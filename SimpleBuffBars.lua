@@ -813,6 +813,7 @@ frame:SetScript("OnUpdate", function(self, elapsed)
 		if( self.tempBuffs[1].enabled ) then
 			self:UpdateTempEnchant(2, OFFHAND_SLOT, hasOff, offTimeLeft, offCharges)
 		else
+			self.tempBuffs[2].enabled = nil
 			self:UpdateTempEnchant(1, OFFHAND_SLOT, hasOff, offTimeLeft, offCharges)
 		end
 

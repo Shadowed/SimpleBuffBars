@@ -2,7 +2,7 @@
 if( GetLocale() ~= "zhCN" ) then
 	return
 end
-SimpleBBLocals = {
+SimpleBBLocals = setmetatable({
 	["None"] = "无",
 
 	-- Slash command
@@ -30,7 +30,7 @@ SimpleBBLocals = {
 	["Player buffs"] = "玩家Buff显示",
 	["Player debuffs"] = "玩家Debuff显示",
 	
-	["Anchor configuration for %ss."] = "锚点配置: %ss.",
+	["Anchor configuration for %ss."] = "锚点配置: %s.",
 
 	["Grow display up"] = "向上增长",
 	["Instead of adding everything from top to bottom, timers will be shown from bottom to top."] = "新增的Buff/Debuff向上增长.",
@@ -49,12 +49,16 @@ SimpleBBLocals = {
 	["Height"] = "高",
 	["Width"] = "宽",
 	["Texture"] = "材质",
+	["Colors"] = "颜色",
 	
 	["Color by type"] = "按类型着色计时条",
 	["Sets the bar color to the buff type, if it's a buff light blue, temporary weapon enchants purple, debuffs will be colored by magic type, or red if none."] = "按Buff和Debuff类型着色计时条.",
 	
 	["Color"] = "颜色",
-	["Bar color and background color, if color by buff type isn't enabled."] = "计时条和背景颜色.",
+	["Bar color and background color, if color by type is enabled then this only applies to buffs and tracking."] = "计时条和背景颜色.",
+
+	["Temporary buff color"] = "武器BUFF颜色",
+	["Bar and background color for temporary weapon enchants, only used if color by type is enabled."] = "武器附魔BUFF的计时条和背景颜色.",
 	
 	["Fill timeless buffs"] = "填充无持续时间的计时条",
 	["Buffs without a duration will have the status bar shown as filled in, instead of empty."] = "填充无持续时间的计时条.",
@@ -76,6 +80,11 @@ SimpleBBLocals = {
 	["Spacing"] = "空距",
 	["How far apart this anchor should be from the one it's anchored to, does not apply if anchor to is set to none."] = "锚点之间的空距.",
 	
+	["Buff sorting"] = "Buff排序",
+	["Time left"] = "按剩余时间",
+	["Order gained"] = "按获得顺序",
+	["Sorting information\nTime Left:\nTracking > Auras > Temporary weapon enchant > Buffs by time left\n\nOrder gained:\nTracking > Temporary weapon enchant > Auras > Buffs by order added."] = "Buff排序信息\n按剩余时间:\n追踪类型 > 光环 > 临时武器附魔 > 按剩余时间的Buff\n\n按获得顺序:\n追踪类型 > 临时武器附魔 > 光环 > 按新增获得的Buff.",
+
 	["Anchor to"] = "依附到",
 	["Lets you anchor %ss to another anchor where it'll be shown below it and positioned so that they never overlap."] = "将你的锚点%ss依附到其他的锚点防止重叠.",
 	
@@ -83,6 +92,4 @@ SimpleBBLocals = {
 	
 	["Show stack size"] = "显示可堆叠数量",
 	["Show spell rank"] = "显示法术等级",
-}
-SimpleBBLocals = setmetatable({
 }, {__index = SimpleBBLocals})

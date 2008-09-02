@@ -148,18 +148,25 @@ local function createAnchorOptions(group)
 			name = L["General"],
 			args = {
 				growUp = {
-					order = 1,
+					order = 0,
 					type = "toggle",
 					name = L["Grow display up"],
 					desc = L["Instead of adding everything from top to bottom, timers will be shown from bottom to top."],
 					arg = string.format("groups.%s.growUp", group),
+					width = "full",
 				},
 				timeless = {
-					order = 2,
+					order = 1,
 					type = "toggle",
 					name = L["Fill timeless buffs"],
 					desc = L["Buffs without a duration will have the status bar shown as filled in, instead of empty."],
 					arg = string.format("groups.%s.fillTimeless", group),
+				},
+				passive = {
+					order = 2,
+					type = "toggle",
+					name = L["Hide passive buffs"],
+					arg = string.format("groups.%s.passive", group),
 				},
 				sep = {
 					order = 3,
@@ -312,7 +319,7 @@ local function createAnchorOptions(group)
 						tempColor = {
 							order = 4,
 							type = "color",
-							name = L["Temporary buff color"],
+							name = L["Temporary enchant colors"],
 							desc = L["Bar and background color for temporary weapon enchants, only used if color by type is enabled."],
 							set = setColor,
 							get = getColor,
@@ -431,6 +438,7 @@ local function loadOptions()
 	local globalOptions = options.args.general.args.global.args
 	globalOptions.desc.name = L["Lets you globally set options for all anchors instead of having to do it one by one.\n\nThe options already chosen in these do not reflect the current anchors settings."]
 	globalOptions.anchor.args.to = nil
+	globalOptions.general.args.passive = nil
 	
 	
 	-- Buff configuration

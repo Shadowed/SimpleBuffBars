@@ -39,6 +39,7 @@ function SimpleBB:OnInitialize()
 					showStack = true,
 					font = "Friz Quadrata TT",
 					fontSize = 12,
+					passive = false,
 				},
 				debuffs = {
 					color = {r = 0.30, g = 0.50, b = 1.0},
@@ -204,10 +205,10 @@ local function updateBar(id, row, display, config)
 	
 	row.bg:SetStatusBarTexture(texture)
 	
-	if( not config.colorByType ) then
-		row:SetStatusBarColor(config.color.r, config.color.g, config.color.b, 0.80)
-		row.bg:SetStatusBarColor(config.color.r, config.color.g, config.color.b, 0.30)
-	end
+	--if( not config.colorByType ) then
+	--	row:SetStatusBarColor(config.color.r, config.color.g, config.color.b, 0.80)
+	--	row.bg:SetStatusBarColor(config.color.r, config.color.g, config.color.b, 0.30)
+	--end
 	
 	row.icon:SetPoint("TOPLEFT", row, "TOP" .. config.iconPosition, display.iconPad, 0)
 	row.icon:SetHeight(config.height)
@@ -262,6 +263,8 @@ function SimpleBB:ReloadBars()
 		for id, row in pairs(display.rows) do
 			updateBar(id, row, display, config)
 		end
+		
+		self:UpdateDisplay(name)
 	end
 end
 
@@ -309,7 +312,7 @@ local function OnClick(self, mouseButton)
 end
 
 local function OnEnter(self)
-	GameTooltip:SetOwner(self, "ANCHOR_TOPLEFT")
+	GameTooltip:SetOwner(self, "ANCHOR_BOTTOMLEFT")
 	if( self.type == "buffs" or self.type == "debuffs" ) then
 		GameTooltip:SetPlayerBuff(self.data.buffIndex)
 	elseif( self.type == "tempBuffs" ) then
@@ -464,13 +467,16 @@ local function updateRow(row, config, data)
 		row.iconBorder:SetTexCoord(0.296875, 0.5703125, 0, 0.515625)
 		row.iconBorder:SetVertexColor(0.81, 0.81, 0.81)
 		row.iconBorder:Show()
-	else
+	elseif( config.colorByType ) then
 		color = buffTypes.buff
+		row.iconBorder:Hide()
+	else
+		color = config.color
 		row.iconBorder:Hide()
 	end
 	
 	-- Color bar by the debuff type
-	if( color and config.colorByType ) then
+	if( color ) then
 		row:SetStatusBarColor(color.r, color.g, color.b, 0.80)
 		row.bg:SetStatusBarColor(color.r, color.g, color.b, 0.30)
 	end
@@ -570,7 +576,6 @@ function SimpleBB:UpdateDisplay(displayID)
 	local display = self.groups[displayID]
 	local buffs = self[displayID]
 	local config = self.db.profile.groups[displayID]
-		
 	-- Clear table
 	for i=#(tempRows), 1, -1 do
 		table.remove(tempRows, i)
@@ -578,7 +583,7 @@ function SimpleBB:UpdateDisplay(displayID)
 	
 	-- Create buffs
 	for id, data in pairs(self[displayID]) do
-		if( data.enabled ) then
+		if( data.enabled and ( config.passive and not data.untilCancelled or not config.passive ) ) then
 			data.type = displayID
 			table.insert(tempRows, data)
 		end

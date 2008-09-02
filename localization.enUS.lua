@@ -53,7 +53,7 @@ SimpleBBLocals = {
 	["Color"] = "Color",
 	["Bar color and background color, if color by type is enabled then this only applies to buffs and tracking."] = "Bar color and background color, if color by type is enabled then this only applies to buffs and tracking.",
 	
-	["Temporary buff color"] = "Temporary buff color",
+	["Temporary enchant colors"] = "Temporary enchant colors",
 	["Bar and background color for temporary weapon enchants, only used if color by type is enabled."] = "Bar and background color for temporary weapon enchants, only used if color by type is enabled.",
 	
 	["Fill timeless buffs"] = "Fill timeless buffs",
@@ -80,6 +80,9 @@ SimpleBBLocals = {
 	["Time left"] = "Time left",
 	["Order gained"] = "Order gained",
 	["Sorting information\nTime Left:\nTracking > Auras > Temporary weapon enchant > Buffs by time left\n\nOrder gained:\nTracking > Temporary weapon enchant > Auras > Buffs by order added."] = "Sorting information\nTime Left:\nTracking > Auras > Temporary weapon enchant > Buffs by time left\n\nOrder gained:\nTracking > Temporary weapon enchant > Auras > Buffs by order added.",
+	
+	["Hide passive buffs"] = "Hide passive buffs",
+	["Hide buffs without a duration, this is only buffs and not debuffs."] = "Hide buffs without a duration, this is only buffs and not debuffs.",
 	
 	
 	["Anchor to"] = "Anchor to",

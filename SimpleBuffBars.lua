@@ -40,6 +40,8 @@ function SimpleBB:OnInitialize()
 					font = "Friz Quadrata TT",
 					fontSize = 12,
 					passive = false,
+					time = "hhmmss",
+					position = { x = 600, y = 600 },
 				},
 				debuffs = {
 					color = {r = 0.30, g = 0.50, b = 1.0},
@@ -56,9 +58,11 @@ function SimpleBB:OnInitialize()
 					showStack = true,
 					anchorTo = "buffs",
 					anchorSpacing = 10,
-					
 					font = "Friz Quadrata TT",
 					fontSize = 12,
+					passive = false,
+					time = "hhmmss",
+					position = { x = 600, y = 600 },
 				},
 			},
 		},
@@ -134,7 +138,7 @@ end
 -- Configuration changed, update bars
 function SimpleBB:Reload()
 	if( not self.db.profile.showTrack ) then
-		self.activeTrack.name = nil
+		self.activeTrack.enabled = nil
 	end
 	
 	if( not self.db.profile.showTemp ) then
@@ -158,13 +162,22 @@ end
 local function OnShow(self)
 	local config = SimpleBB.db.profile.groups[self.name]
 	if( config.anchorTo and config.anchorTo ~= self.name and SimpleBB.groups[config.anchorTo] ) then
-		local spacing = -config.anchorSpacing
-		if( SimpleBB.db.profile.groups[config.anchorTo].growUp ) then
-			spacing = config.anchorSpacing
+		if( SimpleBB.groups[config.anchorTo]:IsVisible() ) then
+			local spacing = -config.anchorSpacing
+			if( SimpleBB.db.profile.groups[config.anchorTo].growUp ) then
+				spacing = config.anchorSpacing
+			end
+
+			self:SetPoint("TOPLEFT", SimpleBB.groups[config.anchorTo].container, "BOTTOMLEFT", 0, spacing)
+			self:SetMovable(false)
+		else
+			local scale = self:GetEffectiveScale()
+			local position = SimpleBB.db.profile.groups[config.anchorTo].position
+			self:ClearAllPoints()
+			self:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", position.x / scale, position.y / scale)
+			self:SetMovable(true)
 		end
 		
-		self:SetPoint("TOPLEFT", SimpleBB.groups[config.anchorTo].container, "BOTTOMLEFT", 0, spacing)
-		self:SetMovable(false)
 	elseif( config.position ) then
 		local scale = self:GetEffectiveScale()
 		self:ClearAllPoints()
@@ -174,6 +187,22 @@ local function OnShow(self)
 		self:ClearAllPoints()
 		self:SetPoint("CENTER", UIParent, "CENTER")
 		self:SetMovable(true)
+	end
+
+	-- Check if something is anchored to us, if it is then we need to reposition them
+	for name, data in pairs(SimpleBB.db.profile.groups) do
+		if( data.anchorTo == self.name ) then
+			OnShow(SimpleBB.groups[name])
+		end
+	end
+end
+
+-- Check if something is anchored to us, if it is then we need to reposition them
+local function OnHide(self)
+	for name, data in pairs(SimpleBB.db.profile.groups) do
+		if( data.anchorTo == self.name ) then
+			OnShow(SimpleBB.groups[name])
+		end
 	end
 end
 
@@ -185,8 +214,10 @@ function SimpleBB:CreateGroup(name)
 	-- Set defaults
 	local frame = CreateFrame("Frame", nil, UIParent)
 	frame:SetMovable(true)
-	frame:SetScript("OnShow", OnShow)
 	frame:Hide()
+	
+	frame:SetScript("OnHide", OnHide)
+	frame:SetScript("OnShow", OnShow)
 	frame.name = name
 	
 	-- This is wrapped around all the bars so we can have things "linked" together
@@ -374,6 +405,49 @@ function SimpleBB:CreateBar(parent)
 	updateBar(#(parent.rows), frame, parent, self.db.profile.groups[parent.name])
 end
 
+local formatTime = {
+	["hhmmss"] = function(text, timeLeft)
+		local hours, minutes, seconds = 0, 0, 0
+		if( timeLeft >= 3600 ) then
+			hours = floor(timeLeft / 3600)
+			timeLeft = mod(timeLeft, 3600)
+		end
+
+		if( timeLeft >= 60 ) then
+			minutes = floor(timeLeft / 60)
+			timeLeft = mod(timeLeft, 60)
+		end
+
+		seconds = timeLeft > 0 and timeLeft or 0
+
+		if( hours > 0 ) then
+			text:SetFormattedText("%d:%02d:%02d", hours, minutes, seconds)
+		else
+			text:SetFormattedText("%02d:%02d", minutes > 0 and minutes or 0, seconds)
+		end
+	end,
+	["blizzard"] = function(text, timeLeft)
+		local hours, minutes, seconds = 0, 0, 0
+		if( timeLeft >= 3600 ) then
+			hours = floor(timeLeft / 3600)
+			timeLeft = mod(timeLeft, 3600)
+		end
+
+		if( timeLeft >= 60 ) then
+			minutes = floor(timeLeft / 60)
+			timeLeft = mod(timeLeft, 60)
+		end
+
+		if( hours > 0 ) then
+			text:SetFormattedText("%dh%dm", hours, minutes)
+		elseif( minutes > 0 ) then
+			text:SetFormattedText("%dm", minutes)
+		else
+			text:SetFormattedText("%02ds", timeLeft > 0 and timeLeft or 0)
+		end
+	end,
+}
+
 -- Update visuals
 local function OnUpdate(self)
 	--Once WoTLK hits, will switch to using this system.
@@ -399,26 +473,8 @@ local function OnUpdate(self)
 	
 	local seconds = self.secondsLeft - ((hour * 3600) + (minutes * 60))
 	]]
-
-	local hours, minutes, seconds = 0, 0, 0
-	local timeLeft = self.secondsLeft
-	if( timeLeft >= 3600 ) then
-		hours = floor(timeLeft / 3600)
-		timeLeft = mod(timeLeft, 3600)
-	end
-
-	if( timeLeft >= 60 ) then
-		minutes = floor(timeLeft / 60)
-		timeLeft = mod(timeLeft, 60)
-	end
-
-	seconds = timeLeft > 0 and timeLeft or 0
-
-	if( hours > 0 ) then
-		self.timer:SetFormattedText("%d:%02d:%02d", hours, minutes, seconds)
-	else
-		self.timer:SetFormattedText("%02d:%02d", minutes > 0 and minutes or 0, seconds)
-	end
+	
+	formatTime[self.timeOption](self.timer, self.secondsLeft)
 end
 
 -- Update a single row
@@ -490,6 +546,7 @@ local function updateRow(row, config, data)
 	row.enabled = true
 	row.type = data.type
 	row.data = data
+	row.timeOption = config.time
 	
 	-- Don't use an on update if it has no timer
 	if( not data.untilCancelled ) then
@@ -580,6 +637,7 @@ function SimpleBB:UpdateDisplay(displayID)
 	local display = self.groups[displayID]
 	local buffs = self[displayID]
 	local config = self.db.profile.groups[displayID]
+	
 	-- Clear table
 	for i=#(tempRows), 1, -1 do
 		table.remove(tempRows, i)
@@ -657,8 +715,6 @@ function SimpleBB:UpdateDisplay(displayID)
 		end
 	end
 end
-
---/dump SimpleBB:GetStartTime("buffs", "", "", 7)
 
 -- Get the start seconds of this buff/debuff/ect
 local buffTimes = {buffs = {}, debuffs = {}, tempBuffs = {}}

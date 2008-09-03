@@ -134,6 +134,7 @@ function Config:GetFonts()
 	return fonts
 end
 
+local timeDisplay = {["hhmmss"] = L["HH:MM:SS"], ["blizzard"] = L["Blizzard default"]}
 local function createAnchorOptions(group)
 	return {
 		desc = {
@@ -369,6 +370,13 @@ local function createAnchorOptions(group)
 							name = L["Show spell rank"],
 							arg = string.format("groups.%s.showRank", group),
 						},
+						name = {
+							order = 3,
+							type = "select",
+							name = L["Time display"],
+							values = timeDisplay,
+							arg = string.format("groups.%s.time", group),
+						},
 					},
 				},
 			},
@@ -439,6 +447,7 @@ local function loadOptions()
 	globalOptions.desc.name = L["Lets you globally set options for all anchors instead of having to do it one by one.\n\nThe options already chosen in these do not reflect the current anchors settings."]
 	globalOptions.anchor.args.to = nil
 	globalOptions.general.args.passive = nil
+	globalOptions.general.args.growUp.width = nil
 	
 	
 	-- Buff configuration

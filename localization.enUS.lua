@@ -90,6 +90,10 @@ SimpleBBLocals = {
 	
 	["Display"] = "Display",
 	
+	["Time display"] = "Time display",
+	["HH:MM:SS"] = "HH:MM:SS",
+	["Blizzard default"] = "Blizzard default",
+	
 	["Show stack size"] = "Show stack size",
 	["Show spell rank"] = "Show spell rank",
 }

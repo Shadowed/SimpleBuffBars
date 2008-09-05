@@ -18,13 +18,14 @@ SimpleBBLocals = {
 	["Shows your current tracking as a buff, can change trackings through this as well."] = "Shows your current tracking as a buff, can change trackings through this as well.",
 	
 	["Global options"] = "Global options",
-	["Lets you globally set options for all anchors instead of having to do it one by one.\n\nThe options already chosen in these do not reflect the current anchors settings."] = "Lets you globally set options for all anchors instead of having to do it one by one.\n\nThe options already chosen in these do not reflect the current anchors settings.",
+	["Lets you globally set options for all anchors instead of having to do it one by one.\n\nThe options already chosen in these do not reflect the current anchors settings.\n\nNOTE! Not all options are available, things like anchoring or hiding passive buffs are only available in the anchors own configuration."] = "Lets you globally set options for all anchors instead of having to do it one by one.\n\nThe options already chosen in these do not reflect the current anchors settings.\n\nNOTE! Not all options are available, things like anchoring or hiding passive buffs are only available in the anchors own configuration.",
 	
 	["Lock frames"] = "Lock frames",
 	["Prevents the frames from being dragged with ALT + Drag."] = "Prevents the frames from being dragged with ALT + Drag.",
 	
 	["Player buffs"] = "Player buffs",
 	["Player debuffs"] = "Player debuffs",
+	["Temporary enchants"] = "Temporary enchants",
 	
 	["Anchor configuration for %ss."] = "Anchor configuration for %ss.",
 
@@ -72,6 +73,7 @@ SimpleBBLocals = {
 	["Anchor"] = "Anchor",
 	["Buffs"] = "Buffs",
 	["Debuffs"] = "Debuffs",
+	["Temporary enchants"] = "Temporary enchants",
 	
 	["Spacing"] = "Spacing",
 	["How far apart this anchor should be from the one it's anchored to, does not apply if anchor to is set to none."] = "How far apart this anchor should be from the one it's anchored to, does not apply if anchor to is set to none.",
@@ -84,6 +86,8 @@ SimpleBBLocals = {
 	["Hide passive buffs"] = "Hide passive buffs",
 	["Hide buffs without a duration, this is only buffs and not debuffs."] = "Hide buffs without a duration, this is only buffs and not debuffs.",
 	
+	["Move to"] = "Move to",
+	["Allows you to move the temporary weapon enchants into another anchor."] = "Allows you to move the temporary weapon enchants into another anchor.",
 	
 	["Anchor to"] = "Anchor to",
 	["Lets you anchor %ss to another anchor where it'll be shown below it and positioned so that they never overlap."] = "Lets you anchor %ss to another anchor where it'll be shown below it and positioned so that they never overlap.",

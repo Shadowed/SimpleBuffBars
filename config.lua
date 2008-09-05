@@ -23,20 +23,27 @@ function Config:OnInitialize()
 	-- Buff examples for making configuration easier
 	SimpleBB.example = {
 		["buffs"] = {
-			enabled = true, type = "test", buffIndex = 0,
-			buffType = "Magic", name = "Buff of test",
+			enabled = true, type = "buffs", buffIndex = 0,
+			buffType = "none", name = "Buff of test",
 			icon = "Interface\\Icons\\Spell_Frost_WizardMark",
 			stack = 3, rank = 3,
 			timeLeft = 534, startSeconds = 800,
 			endTime = GetTime() + 543,
 		},
 		["debuffs"] = {
-			enabled = true, type = "test", buffIndex = -1,
-			buffType = "none", name = "Debuff of pain",
+			enabled = true, type = "debuffs", buffIndex = -1,
+			buffType = "Curse", name = "Debuff of pain",
 			icon = "Interface\\Icons\\Spell_Nature_RemoveCurse",
 			stack = 2, rank = 5,
 			timeLeft = 253, startSeconds = 400,
 			endTime = GetTime() + 253,
+		},
+		["tempEnchants"] = {
+			enabled = true, type = "tempEnchants", slotID = 16,
+			buffType = "none", name = "Temporary enchant of awesome",
+			icon = "Interface\\Icons\\INV_Potion_100",
+			timeLeft = 900, startSeconds = 950,
+			endTime = GetTime() + 900,
 		},
 	}
 
@@ -249,8 +256,33 @@ local function createAnchorOptions(group)
 					type = "select",
 					name = L["Anchor to"],
 					desc = string.format(L["Lets you anchor %ss to another anchor where it'll be shown below it and positioned so that they never overlap."], group),
-					values = {[""] = L["None"], ["buffs"] = L["Buffs"], ["debuffs"] = L["Debuffs"]},
+					values = {[""] = L["None"], ["buffs"] = L["Buffs"], ["debuffs"] = L["Debuffs"], ["tempEnchants"] = L["Temporary enchants"]},
 					arg = string.format("groups.%s.anchorTo", group),
+				},
+			},
+		},
+		tempEnchant = {
+			order = 2,
+			type = "group",
+			inline = true,
+			name = L["Temporary enchants"],
+			args = {
+				to = {
+					order = 2,
+					type = "select",
+					name = L["Move to"],
+					desc = L["Allows you to move the temporary weapon enchants into another anchor."],
+					values = {[""] = L["None"], ["buffs"] = L["Buffs"], ["debuffs"] = L["Debuffs"]},
+					arg = string.format("groups.%s.moveTo", group),
+				},
+				tempColor = {
+					order = 4,
+					type = "color",
+					name = L["Temporary enchant colors"],
+					desc = L["Bar and background color for temporary weapon enchants, only used if color by type is enabled."],
+					set = setColor,
+					get = getColor,
+					arg = string.format("groups.%s.tempColor", group),
 				},
 			},
 		},
@@ -302,12 +334,6 @@ local function createAnchorOptions(group)
 							desc = L["Sets the bar color to the buff type, if it's a buff light blue, temporary weapon enchants purple, debuffs will be colored by magic type, or red if none."],
 							arg = string.format("groups.%s.colorByType", group),
 						},
-						sep = {
-							order = 2,
-							name = "",
-							type = "description",
-							width = "full",
-						},
 						baseColor = {
 							order = 3,
 							type = "color",
@@ -316,15 +342,6 @@ local function createAnchorOptions(group)
 							set = setColor,
 							get = getColor,
 							arg = string.format("groups.%s.color", group),
-						},
-						tempColor = {
-							order = 4,
-							type = "color",
-							name = L["Temporary enchant colors"],
-							desc = L["Bar and background color for temporary weapon enchants, only used if color by type is enabled."],
-							set = setColor,
-							get = getColor,
-							arg = string.format("groups.%s.tempColor", group),
 						},
 					},
 				},
@@ -444,7 +461,7 @@ local function loadOptions()
 	options.args.general.args.global.args = createAnchorOptions("global")
 	
 	local globalOptions = options.args.general.args.global.args
-	globalOptions.desc.name = L["Lets you globally set options for all anchors instead of having to do it one by one.\n\nThe options already chosen in these do not reflect the current anchors settings."]
+	globalOptions.desc.name = L["Lets you globally set options for all anchors instead of having to do it one by one.\n\nThe options already chosen in these do not reflect the current anchors settings.\n\nNOTE! Not all options are available, things like anchoring or hiding passive buffs are only available in the anchors own configuration."]
 	globalOptions.anchor.args.to = nil
 	globalOptions.general.args.passive = nil
 	globalOptions.general.args.growUp.width = nil
@@ -460,10 +477,27 @@ local function loadOptions()
 		handler = Config,
 		args = createAnchorOptions("buffs"),
 	}
+	
+	options.args.buffs.args.tempEnchant = nil
+	options.args.buffs.args.anchor.args.to.values.buffs = nil
+
+	-- Debuff configuration
+	options.args.tempEnchants = {
+		order = 3,
+		type = "group",
+		name = L["Temporary enchants"],
+		get = get,
+		set = set,
+		handler = Config,
+		args = createAnchorOptions("tempEnchants"),
+	}
+	
+	options.args.tempEnchants.args.bar.args.color.args.color = nil
+	options.args.tempEnchants.args.anchor.args.to.values.tempenchants = nil
 
 	-- Debuff configuration
 	options.args.debuffs = {
-		order = 3,
+		order = 4,
 		type = "group",
 		name = L["Player debuffs"],
 		get = get,
@@ -472,11 +506,12 @@ local function loadOptions()
 		args = createAnchorOptions("debuffs"),
 	}
 	
-	options.args.debuffs.args.bar.args.color.args.tempColor = nil
+	options.args.debuffs.args.tempEnchant = nil
+	options.args.debuffs.args.anchor.args.to.values.debuffs = nil
 
 	-- DB Profiles
 	options.args.profile = LibStub("AceDBOptions-3.0"):GetOptionsTable(SimpleBB.db)
-	options.args.profile.order = 4
+	options.args.profile.order = 5
 end
 
 -- Slash commands
@@ -494,10 +529,70 @@ SlashCmdList["SIMPLEBB"] = function(msg)
 	end
 
 	dialog:Open("SimpleBB")
-
-	--if( msg == "ui" ) then
-	--else
-	--	DEFAULT_CHAT_FRAME:AddMessage(L["Simple Buff Bars slash commands"])
-	--	DEFAULT_CHAT_FRAME:AddMessage(L[" - ui - Opens the configuration."])
-	--end
 end
+
+-- Bazaar support
+if( not IsAddOnLoaded("Bazaar") ) then
+	return
+end
+
+function Config:Receive(data, categories)
+	local self = SimpleBB
+	
+	if( categories.general ) then
+		self.db.profile.locked = data.general.locked
+		self.db.profile.showTrack = data.general.showTrack
+		self.db.profile.showTemp = data.general.showTemp
+		self.db.profile.showExample = data.general.showExample
+	end
+	
+	if( categories.buffs ) then
+		self.db.profile.groups.buffs = data.buffs
+	end
+	
+	if( categories.debuffs ) then
+		self.db.profile.groups.debuffs = data.debuffs
+	end
+	
+	if( categories.tempEnchants ) then
+		self.db.profile.groups.tempEnchants = data.tempEnchants
+	end
+	
+	self:Reload()
+end
+
+function Config:Send(categories)
+	local config = {}
+	local self = SimpleBB
+
+	if( categories.general ) then
+		config.general = {}
+		config.general.locked = self.db.profile.locked
+		config.general.showTrack = self.db.profile.showTrack
+		config.general.showTemp = self.db.profile.showTemp
+		config.general.showExample = self.db.profile.showExample
+	end
+
+	if( categories.buffs ) then
+		config.buffs = CopyTable(self.db.profile.groups.buffs)
+	end
+
+	if( categories.debuffs ) then
+		config.debuffs = CopyTable(self.db.profile.groups.debuffs)
+	end
+	
+	if( categories.tempEnchants ) then
+		config.tempEnchants = CopyTable(self.db.profile.groups.tempEnchants)
+	end
+
+	return config
+end
+
+local obj = Bazaar:RegisterAddOn("SimpleBuffBars")
+obj:RegisterCategory("general", "General")
+obj:RegisterCategory("buffs", "Buff anchor")
+obj:RegisterCategory("debuffs", "Debuff anchor")
+obj:RegisterCategory("tempEnchants", "Temporary enchant anchor")
+
+obj:RegisterReceiveHandler(Config, "Receive")
+obj:RegisterSendHandler(Config, "Send")

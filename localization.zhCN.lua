@@ -57,7 +57,7 @@ SimpleBBLocals = setmetatable({
 	["Color"] = "颜色",
 	["Bar color and background color, if color by type is enabled then this only applies to buffs and tracking."] = "计时条和背景颜色.",
 
-	["Temporary buff color"] = "武器BUFF颜色",
+	["Temporary enchant colors"] = "临时附魔颜色",
 	["Bar and background color for temporary weapon enchants, only used if color by type is enabled."] = "武器附魔BUFF的计时条和背景颜色.",
 	
 	["Fill timeless buffs"] = "填充无持续时间的计时条",
@@ -85,10 +85,17 @@ SimpleBBLocals = setmetatable({
 	["Order gained"] = "按获得顺序",
 	["Sorting information\nTime Left:\nTracking > Auras > Temporary weapon enchant > Buffs by time left\n\nOrder gained:\nTracking > Temporary weapon enchant > Auras > Buffs by order added."] = "Buff排序信息\n按剩余时间:\n追踪类型 > 光环 > 临时武器附魔 > 按剩余时间的Buff\n\n按获得顺序:\n追踪类型 > 临时武器附魔 > 光环 > 按新增获得的Buff.",
 
+	["Hide passive buffs"] = "隐藏被动Buffs",
+	["Hide buffs without a duration, this is only buffs and not debuffs."] = "隐藏没有持续时间的被动Buffs，不包括Debuffs.",
+
 	["Anchor to"] = "依附到",
 	["Lets you anchor %ss to another anchor where it'll be shown below it and positioned so that they never overlap."] = "将你的锚点%ss依附到其他的锚点防止重叠.",
 	
 	["Display"] = "显示方式",
+
+	["Time display"] = "时间显示",
+	["HH:MM:SS"] = "HH:MM:SS",
+	["Blizzard default"] = "Blizzard默认",
 	
 	["Show stack size"] = "显示可堆叠数量",
 	["Show spell rank"] = "显示法术等级",

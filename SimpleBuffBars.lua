@@ -9,6 +9,8 @@ local L = SimpleBBLocals
 local SML, MAINHAND_SLOT, OFFHAND_SLOT
 local mainEnabled, offEnabled
 
+local ENCHANT_ANCHOR = "tempEnchants"
+
 local frame = CreateFrame("Frame")
 
 
@@ -20,54 +22,39 @@ function SimpleBB:OnInitialize()
 			showTemp = true,
 			showExample = false,
 			
-			groups = {
-				buffs = {
-					tempColor = {r = 0.5, g = 0.0, b = 0.5},
-					color = {r = 0.30, g = 0.50, b = 1.0},
-					texture = "Minimalist",
-					sortBy = "timeleft",
-					iconPosition = "LEFT",
-					height = 16,
-					width = 200,
-					maxRows = 100,
-					scale = 1.0,
-					alpha = 1.0,
-					spacing = 0,
-					colorByType = true,
-					anchorSpacing = 20,
-					anchorTo = "",
-					showStack = true,
-					font = "Friz Quadrata TT",
-					fontSize = 12,
-					passive = false,
-					time = "hhmmss",
-					position = { x = 600, y = 600 },
-				},
-				debuffs = {
-					color = {r = 0.30, g = 0.50, b = 1.0},
-					texture = "Minimalist",
-					sortBy = "timeleft",
-					iconPosition = "LEFT",
-					height = 16,
-					width = 200,
-					maxRows = 100,
-					scale = 1.0,
-					alpha = 1.0,
-					spacing = 0,
-					colorByType = true,
-					showStack = true,
-					anchorTo = "buffs",
-					anchorSpacing = 10,
-					font = "Friz Quadrata TT",
-					fontSize = 12,
-					passive = false,
-					time = "hhmmss",
-					position = { x = 600, y = 600 },
-				},
+			anchors = {
+				tempColor = {r = 0.5, g = 0.0, b = 0.5},
+				color = {r = 0.30, g = 0.50, b = 1.0},
+				texture = "Minimalist",
+				sortBy = "timeleft",
+				iconPosition = "LEFT",
+				height = 16,
+				width = 200,
+				maxRows = 100,
+				scale = 1.0,
+				alpha = 1.0,
+				spacing = 0,
+				colorByType = true,
+				anchorSpacing = 20,
+				anchorTo = "",
+				showStack = true,
+				font = "Friz Quadrata TT",
+				fontSize = 12,
+				passive = false,
+				time = "hhmmss",
+				position = { x = 600, y = 600 },
 			},
+			groups = {},
 		},
 	}
 
+	-- Setup defaults quickly for groups
+	self.defaults.profile.groups.buffs = CopyTable(self.defaults.profile.anchors)
+	self.defaults.profile.groups.debuffs = CopyTable(self.defaults.profile.anchors)
+	self.defaults.profile.groups.tempEnchants = CopyTable(self.defaults.profile.anchors)
+	self.defaults.profile.groups.tempEnchants.moveTo = "buffs"
+	
+	-- Initialize the DB
 	self.db = LibStub:GetLibrary("AceDB-3.0"):New("SimpleBBDB", self.defaults)
 	self.db.RegisterCallback(self, "OnProfileChanged", "Reload")
 	self.db.RegisterCallback(self, "OnProfileCopied", "Reload")
@@ -75,6 +62,7 @@ function SimpleBB:OnInitialize()
 
 	self.revision = tonumber(string.match("$Revision: 811 $", "(%d+)") or 1)
 	
+	-- Annnd so we can grab texture things
 	SML = LibStub:GetLibrary("LibSharedMedia-3.0")
 	SML.RegisterCallback(self, "LibSharedMedia_Registered", "TextureRegistered")
 		
@@ -82,12 +70,19 @@ function SimpleBB:OnInitialize()
 	self.buffs = {}
 	self.debuffs = {}
 	self.activeTrack = {untilCancelled = true, sortID = "z", type = "tracking"}
-	self.tempBuffs = {[1] = {}, [2] = {}}
+	self.tempEnchants = {[1] = {}, [2] = {}}
 	
 	self.groups = {}
 	for name in pairs(self.db.profile.groups) do
 		self.groups[name] = self:CreateGroup(name)
 		self.groups[name].rows = {}
+	end
+	
+	-- Check if we should swap the enchant anchor to something else
+	if( self.db.profile.groups.tempEnchants.moveTo ~= "" ) then
+		ENCHANT_ANCHOR = self.db.profile.groups.tempEnchants.moveTo
+	else
+		ENCHANT_ANCHOR = "tempEnchants"
 	end
 	
 	-- Setup the SlotIDs for Mainhand/Offhands
@@ -142,11 +137,19 @@ function SimpleBB:Reload()
 	end
 	
 	if( not self.db.profile.showTemp ) then
-		self.tempBuffs[1].enabled = nil
-		self.tempBuffs[2].enabled = nil
+		self.tempEnchants[1].enabled = nil
+		self.tempEnchants[2].enabled = nil
 		frame:Hide()
 	else
 		frame:Show()
+	end
+
+	-- Check if we should swap the enchant anchor to something else
+	if( self.db.profile.groups.tempEnchants.moveTo ~= "" ) then
+		ENCHANT_ANCHOR = self.db.profile.groups.tempEnchants.moveTo
+		
+	else
+		ENCHANT_ANCHOR = "tempEnchants"
 	end
 	
 	self:ReloadBars()
@@ -154,25 +157,38 @@ function SimpleBB:Reload()
 	self:PLAYER_AURAS_CHANGED()
 	self:UpdateTracking()
 	
-	self:UpdateDisplay("buffs")
-	self:UpdateDisplay("debuffs")
+	if( ENCHANT_ANCHOR == "tempEnchants" ) then
+		self:UpdateDisplay("tempEnchants")
+	end
 end
 
 -- BAR MANAGEMENT
 local function OnShow(self)
 	local config = SimpleBB.db.profile.groups[self.name]
-	if( config.anchorTo and config.anchorTo ~= self.name and SimpleBB.groups[config.anchorTo] ) then
-		if( SimpleBB.groups[config.anchorTo]:IsVisible() ) then
+	
+	-- Set the active anchor to the default one
+	config.activeAnchor = config.anchorTo
+	-- If debuffs are anchored to temp enchants, temp enchants to buffs
+	-- We try and position debuffs, but temp enchants aren't visible, will automatically anchor the debuffs to buffs
+	-- This also has the benefit of if buffs aren't shown, it'll automatically anchor debuffs where buffs are instead of temp enchants
+	if( config.anchorTo ~= "" and not SimpleBB.groups[config.anchorTo]:IsVisible() and SimpleBB.db.profile.groups[config.anchorTo].anchorTo ~= "" ) then
+		config.activeAnchor = SimpleBB.db.profile.groups[config.anchorTo].anchorTo
+	end
+	
+	-- Check if we need to anchor it to something else
+	if( config.activeAnchor ~= self.name and SimpleBB.groups[config.activeAnchor] ) then
+		-- We're anchored to something else, and that anchor is visible
+		if( SimpleBB.groups[config.activeAnchor]:IsVisible() ) then
 			local spacing = -config.anchorSpacing
-			if( SimpleBB.db.profile.groups[config.anchorTo].growUp ) then
+			if( SimpleBB.db.profile.groups[config.activeAnchor].growUp ) then
 				spacing = config.anchorSpacing
 			end
 
-			self:SetPoint("TOPLEFT", SimpleBB.groups[config.anchorTo].container, "BOTTOMLEFT", 0, spacing)
+			self:SetPoint("TOPLEFT", SimpleBB.groups[config.activeAnchor].container, "BOTTOMLEFT", 0, spacing)
 			self:SetMovable(false)
 		else
 			local scale = self:GetEffectiveScale()
-			local position = SimpleBB.db.profile.groups[config.anchorTo].position
+			local position = SimpleBB.db.profile.groups[config.activeAnchor].position
 			self:ClearAllPoints()
 			self:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", position.x / scale, position.y / scale)
 			self:SetMovable(true)
@@ -200,7 +216,7 @@ end
 -- Check if something is anchored to us, if it is then we need to reposition them
 local function OnHide(self)
 	for name, data in pairs(SimpleBB.db.profile.groups) do
-		if( data.anchorTo == self.name ) then
+		if( data.activeAnchor == self.name and SimpleBB.groups[name]:IsVisible() ) then
 			OnShow(SimpleBB.groups[name])
 		end
 	end
@@ -235,11 +251,6 @@ local function updateBar(id, row, display, config)
 	row:Hide()
 	
 	row.bg:SetStatusBarTexture(texture)
-	
-	--if( not config.colorByType ) then
-	--	row:SetStatusBarColor(config.color.r, config.color.g, config.color.b, 0.80)
-	--	row.bg:SetStatusBarColor(config.color.r, config.color.g, config.color.b, 0.30)
-	--end
 	
 	row.icon:SetPoint("TOPLEFT", row, "TOP" .. config.iconPosition, display.iconPad, 0)
 	row.icon:SetHeight(config.height)
@@ -335,7 +346,7 @@ local function OnClick(self, mouseButton)
 	
 	if( self.type == "buffs" or self.type == "debuffs" ) then
 		CancelPlayerBuff(self.data.buffIndex)
-	elseif( self.type == "tempBuffs" ) then
+	elseif( self.type == "tempEnchants" ) then
 		CancelItemTempEnchantment(self.data.slotID - 15)
 	elseif( self.type == "tracking" ) then
 		ToggleDropDownMenu(1, nil, MiniMapTrackingDropDown, self, 0, -5)
@@ -346,7 +357,7 @@ local function OnEnter(self)
 	GameTooltip:SetOwner(self, "ANCHOR_BOTTOMLEFT")
 	if( self.type == "buffs" or self.type == "debuffs" ) then
 		GameTooltip:SetPlayerBuff(self.data.buffIndex)
-	elseif( self.type == "tempBuffs" ) then
+	elseif( self.type == "tempEnchants" ) then
 		GameTooltip:SetInventoryItem("player", self.data.slotID)
 	elseif( self.type == "tracking" ) then
 		GameTooltip:SetTracking()
@@ -457,23 +468,13 @@ local function OnUpdate(self)
 	
 	if( self.type == "buffs" or self.type == "debuffs" ) then
 		self.secondsLeft = GetPlayerBuffTimeLeft(self.data.buffIndex)
-	elseif( self.type == "tempBuff" and self.data.slotID == 17 ) then
+	elseif( self.type == "tempEnchant" and self.data.slotID == 17 ) then
 		self.secondsLeft = (select(4, GetWeaponEnchantInfo()) or 0) / 1000
-	elseif( self.type == "tempBuff" and self.data.slotID == 16 ) then
+	elseif( self.type == "tempEnchant" and self.data.slotID == 16 ) then
 		self.secondsLeft = (select(2, GetWeaponEnchantInfo()) or 0) / 1000
 	end
 	
 	self:SetValue(self.secondsLeft)
-
-	-- Timer text, need to see if this can be optimized a bit later
-	--[[
-	local hour = floor(self.secondsLeft / 3600)
-	local minutes = self.secondsLeft - (hour * 3600)
-	minutes = floor(minutes / 60)
-	
-	local seconds = self.secondsLeft - ((hour * 3600) + (minutes * 60))
-	]]
-	
 	formatTime[self.timeOption](self.timer, self.secondsLeft)
 end
 
@@ -504,7 +505,7 @@ local function updateRow(row, config, data)
 	row.icon:Show()
 	
 	local color
-	if( data.type == "tempBuffs" ) then
+	if( data.type == "tempEnchants" ) then
 		color = config.tempColor
 		row.iconBorder:SetTexCoord(0, 0, 0, 0)
 		row.iconBorder:SetTexture("Interface\\Buttons\\UI-TempEnchant-Border")
@@ -595,11 +596,11 @@ local sorting = {
 			return false
 		end
 
-		if( a.type == "tempBuffs" and b.type == "tempBuffs" ) then
+		if( a.type == "tempEnchants" and b.type == "tempEnchants" ) then
 			return a.slotID < b.slotID
-		elseif( a.type == "tempBuffs" ) then
+		elseif( a.type == "tempEnchants" ) then
 			return true
-		elseif( b.type == "tempBuffs" ) then
+		elseif( b.type == "tempEnchants" ) then
 			return false
 		end
 		
@@ -619,18 +620,17 @@ local sorting = {
 			return false
 		end
 		
-		if( a.type == "tempBuffs" and b.type == "tempBuffs" ) then
+		if( a.type == "tempEnchants" and b.type == "tempEnchants" ) then
 			return a.slotID < b.slotID
-		elseif( a.type == "tempBuffs" ) then
+		elseif( a.type == "tempEnchants" ) then
 			return true
-		elseif( b.type == "tempBuffs" ) then
+		elseif( b.type == "tempEnchants" ) then
 			return false
 		end
 		
 		return a.buffIndex < b.buffIndex
 	end,
 }
-
 
 -- Update display for the passed time
 function SimpleBB:UpdateDisplay(displayID)
@@ -651,25 +651,32 @@ function SimpleBB:UpdateDisplay(displayID)
 		end
 	end
 	
-	-- Merge temp weapon enchants and tracking into buffs
-	if( displayID == "buffs") then
-		-- Tracking
-		if( self.activeTrack.enabled ) then
-			table.insert(tempRows, self.activeTrack)
-		end
-
-		-- Temp weapon enchants
-		for id, data in pairs(self.tempBuffs) do
+	-- Merge active tracking into buffs
+	if( displayID == "buffs" and self.activeTrack.enabled ) then
+		table.insert(tempRows, self.activeTrack)
+	end
+	
+	-- Show temp enchants inside there own anchor
+	if( displayID ~= "tempEnchants" and displayID == ENCHANT_ANCHOR ) then
+		for id, data in pairs(self.tempEnchants) do
 			if( data.enabled ) then
-				data.type = "tempBuffs"
+				data.type = "tempEnchants"
 				table.insert(tempRows, data)
 			end
 		end
 	end
-	
+
 	-- Example for configuration
+	-- Really don't like this, it's a quick IF check so it's not TOO bad
+	-- but I'll come up with a better solution without having to do ugly hacks
 	if( self.db.profile.showExample ) then
-		table.insert(tempRows, self.example[displayID])
+		if( displayID == ENCHANT_ANCHOR and displayID ~= "tempEnchants" ) then
+			table.insert(tempRows, self.example.tempEnchants)
+		end
+		
+		if( displayID == "tempEnchants" and ENCHANT_ANCHOR == displayID or displayID ~= "tempEnchants" ) then
+			table.insert(tempRows, self.example[displayID])
+		end
 	end
 		
 	-- Nothing to show
@@ -685,7 +692,6 @@ function SimpleBB:UpdateDisplay(displayID)
 	end
 
 	display:Show()
-
 	table.sort(tempRows, sorting[config.sortBy])
 	
 	-- Position
@@ -717,7 +723,7 @@ function SimpleBB:UpdateDisplay(displayID)
 end
 
 -- Get the start seconds of this buff/debuff/ect
-local buffTimes = {buffs = {}, debuffs = {}, tempBuffs = {}}
+local buffTimes = {buffs = {}, debuffs = {}, tempEnchants = {}}
 function SimpleBB:GetStartTime(type, name, rank, timeLeft)
 	if( not name ) then
 		return timeLeft
@@ -824,10 +830,10 @@ end
 
 -- Update temp weapon enchants
 function SimpleBB:UpdateTempEnchant(id, slotID, hasEnchant, timeLeft, charges)
-	local tempBuff = self.tempBuffs[id]
+	local tempEnchant = self.tempEnchants[id]
 	if( not hasEnchant ) then
-		tempBuff.enabled = nil
-		tempBuff.untilCancelled = nil
+		tempEnchant.enabled = nil
+		tempEnchant.untilCancelled = nil
 		return
 	end
 	
@@ -836,22 +842,22 @@ function SimpleBB:UpdateTempEnchant(id, slotID, hasEnchant, timeLeft, charges)
 	-- When the players entering/leaving the world, we get a bad return on the name/rank
 	-- So we only update it if we found one, and thus fixes it!
 	if( name ) then
-		tempBuff.name = name
-		tempBuff.rank = rank
+		tempEnchant.name = name
+		tempEnchant.rank = rank
 	end
 
 	local timeLeft = timeLeft / 1000
 
-	tempBuff.enabled = true
-	tempBuff.type = "tempBuffs"
-	tempBuff.slotID = slotID
+	tempEnchant.enabled = true
+	tempEnchant.type = "tempEnchants"
+	tempEnchant.slotID = slotID
 
-	tempBuff.timeLeft = timeLeft
-	tempBuff.endTime = GetTime() + timeLeft
-	tempBuff.startSeconds = self:GetStartTime("tempBuffs", name, rank, timeLeft)
+	tempEnchant.timeLeft = timeLeft
+	tempEnchant.endTime = GetTime() + timeLeft
+	tempEnchant.startSeconds = self:GetStartTime("tempEnchants", name, rank, timeLeft)
 
-	tempBuff.icon = GetInventoryItemTexture("player", slotID)
-	tempBuff.stack = charges or 0
+	tempEnchant.icon = GetInventoryItemTexture("player", slotID)
+	tempEnchant.stack = charges or 0
 end
 
 -- Update player buff/debuffs
@@ -872,17 +878,16 @@ frame:SetScript("OnUpdate", function(self, elapsed)
 		timeElapsed = 0
 
 		local hasMain, mainTimeLeft, mainCharges, hasOff, offTimeLeft, offCharges = GetWeaponEnchantInfo()
-		local self = SimpleBB
 		
-		self:UpdateTempEnchant(1, MAINHAND_SLOT, hasMain, mainTimeLeft, mainCharges)
-		if( self.tempBuffs[1].enabled ) then
-			self:UpdateTempEnchant(2, OFFHAND_SLOT, hasOff, offTimeLeft, offCharges)
+		SimpleBB:UpdateTempEnchant(1, MAINHAND_SLOT, hasMain, mainTimeLeft, mainCharges)
+		if( SimpleBB.tempEnchants[1].enabled ) then
+			SimpleBB:UpdateTempEnchant(2, OFFHAND_SLOT, hasOff, offTimeLeft, offCharges)
 		else
-			self.tempBuffs[2].enabled = nil
-			self:UpdateTempEnchant(1, OFFHAND_SLOT, hasOff, offTimeLeft, offCharges)
+			SimpleBB.tempEnchants[2].enabled = nil
+			SimpleBB:UpdateTempEnchant(1, OFFHAND_SLOT, hasOff, offTimeLeft, offCharges)
 		end
 
 		-- Update if needed
-		self:UpdateDisplay("buffs")
+		SimpleBB:UpdateDisplay(ENCHANT_ANCHOR)
 	end
 end)

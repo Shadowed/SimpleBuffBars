@@ -2,7 +2,7 @@
 	Simple Buff Bars, Mayen/Amarand (Horde) from Icecrown (US) PvE
 ]]
 
-SimpleBB = LibStub("AceAddon-3.0"):NewAddon("SimpleBB", "AceEvent-3.0", "AceBucket-3.0")
+SimpleBB = LibStub("AceAddon-3.0"):NewAddon("SimpleBB", "AceEvent-3.0")
 
 local L = SimpleBBLocals
 
@@ -634,6 +634,10 @@ local sorting = {
 
 -- Update display for the passed time
 function SimpleBB:UpdateDisplay(displayID)
+	if( displayID == "tempEnchants" and ENCHANT_ANCHOR ~= displayID ) then
+		return
+	end
+	
 	local display = self.groups[displayID]
 	local buffs = self[displayID]
 	local config = self.db.profile.groups[displayID]

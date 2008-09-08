@@ -532,7 +532,7 @@ SlashCmdList["SIMPLEBB"] = function(msg)
 end
 
 -- Bazaar support
-if( not IsAddOnLoaded("Bazaar") ) then
+if( not Bazaar ) then
 	return
 end
 

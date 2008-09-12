@@ -329,13 +329,6 @@ local function OnDragStop(self)
 
 		local scale = parent:GetEffectiveScale()
 		SimpleBB.db.profile.groups[parent.name].position = { x = parent:GetLeft() * scale, y = parent:GetTop() * scale }
-		
-		if( parent.queueUpdate ) then
-			parent.queueUpdate = nil
-			
-			SimpleBB:UpdateDisplay("buffs")
-			SimpleBB:UpdateDisplay("debuffs")
-		end
 	end
 end
 

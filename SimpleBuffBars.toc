@@ -1,4 +1,4 @@
-## Interface: 20400
+## Interface: 30000
 ## Title: Simple Buff Bars
 ## Notes: Buff/Debuff bars for the player. Now with less evil.
 ## Author: Mayen

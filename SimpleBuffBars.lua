@@ -85,13 +85,12 @@ function SimpleBB:OnInitialize()
 	else
 		ENCHANT_ANCHOR = "tempEnchants"
 	end
-	
 	-- Setup the SlotIDs for Mainhand/Offhands
 	MAINHAND_SLOT = GetInventorySlotInfo("MainHandSlot")
 	OFFHAND_SLOT = GetInventorySlotInfo("SecondaryHandSlot")
 	
 	-- Kill Blizzards buff frame
-	BuffFrame:UnregisterEvent("PLAYER_AURAS_CHANGED")
+	BuffFrame:UnregisterEvent("UNIT_AURA")
 	TemporaryEnchantFrame:Hide()
 	BuffFrame:Hide()
 	
@@ -99,7 +98,7 @@ function SimpleBB:OnInitialize()
 	self:RegisterEvent("PLAYER_ENTERING_WORLD", function(self)
 		self = SimpleBB
 		self:UnregisterEvent("PLAYER_ENTEIRNG_WORLD")
-		self:RegisterEvent("PLAYER_AURAS_CHANGED")
+		self:RegisterEvent("UNIT_AURA")
 		self:RegisterEvent("MINIMAP_UPDATE_TRACKING", "UpdateTracking")
 
 		self:ReloadBars()
@@ -110,7 +109,7 @@ function SimpleBB:OnInitialize()
 			frame:Hide()
 		end
 		
-		self:PLAYER_AURAS_CHANGED()
+		self:UNIT_AURA(nil, "player")
 		self:UpdateTracking()
 	end)
 end
@@ -148,13 +147,14 @@ function SimpleBB:Reload()
 	-- Check if we should swap the enchant anchor to something else
 	if( self.db.profile.groups.tempEnchants.moveTo ~= "" ) then
 		ENCHANT_ANCHOR = self.db.profile.groups.tempEnchants.moveTo
+		
 	else
 		ENCHANT_ANCHOR = "tempEnchants"
 	end
 	
 	self:ReloadBars()
 
-	self:PLAYER_AURAS_CHANGED()
+	self:UNIT_AURA(nil, "player")
 	self:UpdateTracking()
 	
 	if( ENCHANT_ANCHOR == "tempEnchants" ) then
@@ -168,7 +168,6 @@ local function OnShow(self)
 	
 	-- Set the active anchor to the default one
 	config.activeAnchor = config.anchorTo
-	
 	-- If debuffs are anchored to temp enchants, temp enchants to buffs
 	-- We try and position debuffs, but temp enchants aren't visible, will automatically anchor the debuffs to buffs
 	-- This also has the benefit of if buffs aren't shown, it'll automatically anchor debuffs where buffs are instead of temp enchants
@@ -339,7 +338,7 @@ local function OnClick(self, mouseButton)
 	end
 	
 	if( self.type == "buffs" or self.type == "debuffs" ) then
-		CancelPlayerBuff(self.data.buffIndex)
+		CancelUnitBuff("player", self.data.buffIndex, self.data.filter)
 	elseif( self.type == "tempEnchants" ) then
 		CancelItemTempEnchantment(self.data.slotID - 15)
 	elseif( self.type == "tracking" ) then
@@ -349,8 +348,10 @@ end
 
 local function OnEnter(self)
 	GameTooltip:SetOwner(self, "ANCHOR_BOTTOMLEFT")
-	if( self.type == "buffs" or self.type == "debuffs" ) then
-		GameTooltip:SetPlayerBuff(self.data.buffIndex)
+	if( self.type == "buffs" ) then
+		GameTooltip:SetUnitBuff("player", self.data.buffIndex)
+	elseif( self.type == "debuffs") then
+		GameTooltip:SetUnitDebuff("player", self.data.buffIndex)
 	elseif( self.type == "tempEnchants" ) then
 		GameTooltip:SetInventoryItem("player", self.data.slotID)
 	elseif( self.type == "tracking" ) then
@@ -455,20 +456,22 @@ local formatTime = {
 
 -- Update visuals
 local function OnUpdate(self)
-	--Once WoTLK hits, will switch to using this system.
-	--local time = GetTime()
-	--self.secondsLeft = self.secondsLeft - (time - self.lastUpdate)
-	--self.lastUpdate = time
-	
-	if( self.type == "buffs" or self.type == "debuffs" ) then
-		self.secondsLeft = GetPlayerBuffTimeLeft(self.data.buffIndex)
-	elseif( self.type == "tempEnchant" and self.data.slotID == 17 ) then
-		self.secondsLeft = (select(4, GetWeaponEnchantInfo()) or 0) / 1000
-	elseif( self.type == "tempEnchant" and self.data.slotID == 16 ) then
-		self.secondsLeft = (select(2, GetWeaponEnchantInfo()) or 0) / 1000
-	end
+	-- Time left
+	local time = GetTime()
+	self.secondsLeft = self.secondsLeft - (time - self.lastUpdate)
+	self.lastUpdate = time
 	
 	self:SetValue(self.secondsLeft)
+
+	-- Timer text, need to see if this can be optimized a bit later
+	--[[
+	local hour = floor(self.secondsLeft / 3600)
+	local minutes = self.secondsLeft - (hour * 3600)
+	minutes = floor(minutes / 60)
+	
+	local seconds = self.secondsLeft - ((hour * 3600) + (minutes * 60))
+	]]
+	
 	formatTime[self.timeOption](self.timer, self.secondsLeft)
 end
 
@@ -553,8 +556,8 @@ local function updateRow(row, config, data)
 	
 	-- Don't use an on update if it has no timer
 	if( not data.untilCancelled ) then
-		row.secondsLeft = data.endTime - time
 		row.endTime = data.endTime or 0
+		row.secondsLeft = row.endTime - time
 		row.lastUpdate = time
 
 		row:SetMinMaxValues(0, data.startSeconds)
@@ -698,6 +701,7 @@ function SimpleBB:UpdateDisplay(displayID)
 	end
 
 	display:Show()
+
 	table.sort(tempRows, sorting[config.sortBy])
 	
 	-- Position
@@ -729,21 +733,20 @@ function SimpleBB:UpdateDisplay(displayID)
 end
 
 -- Get the start seconds of this buff/debuff/ect
-local buffTimes = {buffs = {}, debuffs = {}, tempEnchants = {}}
 function SimpleBB:GetStartTime(type, name, rank, timeLeft)
 	if( not name ) then
 		return timeLeft
 	end
 	
 	local bID = name .. (rank or "")
-	if( buffTimes[type][bID] ) then
-		if( timeLeft < buffTimes[type][bID] ) then
-			timeLeft = buffTimes[type][bID]
+	if( self.db.profile.buffTimes[type][bID] ) then
+		if( timeLeft < self.db.profile.buffTimes[type][bID] ) then
+			timeLeft = self.db.profile.buffTimes[type][bID]
 		else
-			buffTimes[type][bID] = timeLeft
+			self.db.profile.buffTimes[type][bID] = timeLeft
 		end
 	else
-		buffTimes[type][bID] = timeLeft
+		self.db.profile.buffTimes[type][bID] = timeLeft
 	end
 		
 	return timeLeft
@@ -753,28 +756,28 @@ end
 function SimpleBB:UpdateAuras(type, filter)
 	for _, data in pairs(self[type]) do data.enabled = nil; data.untilCancelled = nil; end
 		
+	local time = GetTime()
 	local buffID = 1
 	while( true ) do
-		local buffIndex, untilCancelled = GetPlayerBuff(buffID, filter)
-		if( buffIndex == 0 ) then break end
+		local name, rank, texture, count, debuffType, duration, endTime, isMine, isStealable = UnitAura("player", buffID, filter)
+		if( not name ) then break end
 		
 		if( not self[type][buffID] ) then
 			self[type][buffID] = {}
 		end
-		
-		local name, rank = GetPlayerBuffName(buffIndex)
-		
+				
 		local buff = self[type][buffID]
 		buff.enabled = true
 		buff.type = type
-		buff.buffIndex = buffIndex
-		buff.untilCancelled = (untilCancelled == 1)
-		buff.icon = GetPlayerBuffTexture(buffIndex)
-		buff.buffType = GetPlayerBuffDispelType(buffIndex)
-		buff.stack = GetPlayerBuffApplications(buffIndex) or 0
-		buff.timeLeft = GetPlayerBuffTimeLeft(buffIndex)
-		buff.startSeconds = self:GetStartTime(type, name, rank, buff.timeLeft)
-		buff.endTime = GetTime() + buff.timeLeft
+		buff.buffIndex = buffID
+		buff.untilCancelled = duration == 0 and endTime == 0
+		buff.icon = texture
+		buff.buffType = debuffType
+		buff.stack = count or 0
+		--buff.startSeconds = duration or endTime and self:GetStartTime(type, name, rank, endTime - time) or 0
+		buff.filter = filter
+		buff.startSeconds = duration
+		buff.endTime = endTime
 		buff.name = name
 		buff.rank = tonumber(string.match(rank, "(%d+)"))
 		
@@ -867,7 +870,11 @@ function SimpleBB:UpdateTempEnchant(id, slotID, hasEnchant, timeLeft, charges)
 end
 
 -- Update player buff/debuffs
-function SimpleBB:PLAYER_AURAS_CHANGED()
+function SimpleBB:UNIT_AURA(event, unit)
+	if( unit ~= "player" ) then
+		return
+	end
+	
 	self:UpdateAuras("buffs", "HELPFUL|PASSIVE")
 	self:UpdateAuras("debuffs", "HARMFUL")
 	

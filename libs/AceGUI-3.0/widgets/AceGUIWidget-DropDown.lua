@@ -1,4 +1,4 @@
---[[ $Id: AceGUIWidget-DropDown.lua 81438 2008-09-06 13:44:36Z nevcairiel $ ]]--
+--[[ $Id: AceGUIWidget-DropDown.lua 76326 2008-06-09 09:29:17Z nevcairiel $ ]]--
 local min, max, floor = math.min, math.max, math.floor
 
 local AceGUI = LibStub("AceGUI-3.0")
@@ -344,7 +344,7 @@ end
 
 do 
 	local widgetType = "Dropdown"
-	local widgetVersion = 18
+	local widgetVersion = 17
 	
 	--[[ Static data ]]--
 	
@@ -359,10 +359,7 @@ do
 	end
 
 	local function Dropdown_OnHide(this)
-		local self = this.obj
-		if self.open then
-			self.pullout:Close()
-		end
+		this.obj.pullout:Close()
 	end
 	
 	local function Dropdown_TogglePullout(this)
@@ -426,10 +423,8 @@ do
 				self:Fire("OnValueChanged", this.userdata.value)
 			else
 				this:SetValue(true)
-			end
-			if self.open then	
-				self.pullout:Close()
-			end
+			end		
+			self.pullout:Close()
 		end
 	end
 	
@@ -448,9 +443,7 @@ do
 	
 	-- exported, AceGUI callback
 	local function OnRelease(self)
-		if self.open then
-			self.pullout:Close()
-		end
+		self.pullout:Close()
 		AceGUI:Release(self.pullout)
 		
 		self:SetText("")
@@ -483,9 +476,7 @@ do
 	
 	-- exported
 	local function ClearFocus(self)
-		if self.open then
-			self.pullout:Close()
-		end
+		self.pullout:Close()
 	end
 	
 	-- exported
@@ -562,7 +553,6 @@ do
 		self.list = list
 		self.pullout:Clear()
 		self.hasClose = nil
-		if not list then return end
 		
 		for v in pairs(list) do
 			sortlist[#sortlist + 1] = v

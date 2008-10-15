@@ -733,20 +733,21 @@ function SimpleBB:UpdateDisplay(displayID)
 end
 
 -- Get the start seconds of this buff/debuff/ect
+local buffTimes = {["tempEnchants"] = {}}
 function SimpleBB:GetStartTime(type, name, rank, timeLeft)
 	if( not name ) then
 		return timeLeft
 	end
 	
 	local bID = name .. (rank or "")
-	if( self.db.profile.buffTimes[type][bID] ) then
-		if( timeLeft < self.db.profile.buffTimes[type][bID] ) then
-			timeLeft = self.db.profile.buffTimes[type][bID]
+	if( buffTimes[type][bID] ) then
+		if( timeLeft < buffTimes[type][bID] ) then
+			timeLeft = buffTimes[type][bID]
 		else
-			self.db.profile.buffTimes[type][bID] = timeLeft
+			buffTimes[type][bID] = timeLeft
 		end
 	else
-		self.db.profile.buffTimes[type][bID] = timeLeft
+		buffTimes[type][bID] = timeLeft
 	end
 		
 	return timeLeft

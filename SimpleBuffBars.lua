@@ -22,6 +22,9 @@ function SimpleBB:OnInitialize()
 			showTemp = true,
 			showExample = false,
 			
+			autoFilter = false,
+			filtersEnabled = {["Caster"] = false, ["Physical"] = false},
+			
 			anchors = {
 				tempColor = {r = 0.5, g = 0.0, b = 0.5},
 				color = {r = 0.30, g = 0.50, b = 1.0},
@@ -85,6 +88,7 @@ function SimpleBB:OnInitialize()
 	else
 		ENCHANT_ANCHOR = "tempEnchants"
 	end
+
 	-- Setup the SlotIDs for Mainhand/Offhands
 	MAINHAND_SLOT = GetInventorySlotInfo("MainHandSlot")
 	OFFHAND_SLOT = GetInventorySlotInfo("SecondaryHandSlot")
@@ -147,13 +151,14 @@ function SimpleBB:Reload()
 	-- Check if we should swap the enchant anchor to something else
 	if( self.db.profile.groups.tempEnchants.moveTo ~= "" ) then
 		ENCHANT_ANCHOR = self.db.profile.groups.tempEnchants.moveTo
-		
 	else
 		ENCHANT_ANCHOR = "tempEnchants"
 	end
 	
+
 	self:ReloadBars()
 
+	self.modules.Filters:Reload()
 	self:UNIT_AURA(nil, "player")
 	self:UpdateTracking()
 	
@@ -179,12 +184,13 @@ local function OnShow(self)
 	if( config.activeAnchor ~= self.name and SimpleBB.groups[config.activeAnchor] ) then
 		-- We're anchored to something else, and that anchor is visible
 		if( SimpleBB.groups[config.activeAnchor]:IsVisible() ) then
-			local spacing = -config.anchorSpacing
+			self:ClearAllPoints()
 			if( SimpleBB.db.profile.groups[config.activeAnchor].growUp ) then
-				spacing = config.anchorSpacing
+				self:SetPoint("TOPLEFT", SimpleBB.groups[config.activeAnchor].container, "TOPLEFT", 0, config.anchorSpacing)
+			else
+				self:SetPoint("TOPLEFT", SimpleBB.groups[config.activeAnchor].container, "BOTTOMLEFT", 0, -config.anchorSpacing)
 			end
 
-			self:SetPoint("TOPLEFT", SimpleBB.groups[config.activeAnchor].container, "BOTTOMLEFT", 0, spacing)
 			self:SetMovable(false)
 		else
 			local scale = self:GetEffectiveScale()
@@ -268,12 +274,14 @@ local function updateBar(id, row, display, config)
 	row.text:SetHeight(config.height)
 	row.text:SetWidth(config.width - 40)
 	
+	row:ClearAllPoints()
+	
 	-- Position
 	if( id > 1 ) then
 		if( not config.growUp ) then
 			row:SetPoint("TOPLEFT", display.rows[id - 1], "BOTTOMLEFT", 0, -config.spacing)
 		else
-			row:SetPoint("BOTTOMLEFT", display.rows[id - 1], "TOPLEFT", 0, config.spacing)
+			row:SetPoint("TOPLEFT", display.rows[id - 1], "TOPLEFT", 0, config.height + config.spacing)
 		end
 	elseif( config.growUp ) then
 		row:SetPoint("BOTTOMLEFT", display, "TOPLEFT", display.barOffset, 0)
@@ -721,9 +729,16 @@ function SimpleBB:UpdateDisplay(displayID)
 	if( display.rows[1] and display.rows[1]:IsVisible() ) then
 		display.container:ClearAllPoints()
 		
+		-- When grow up, it goes from # -> 1, when not it's 1 -> #
+		local firstRow = 1
+		if( config.growUp ) then
+			firstRow = lastRow
+			lastRow = 1
+		end
+		
 		-- Update frame size based on rows used
 		if( config.iconPosition == "LEFT" ) then
-			display.container:SetPoint("TOPLEFT", display.rows[1].icon)
+			display.container:SetPoint("TOPLEFT", display.rows[firstRow].icon)
 			display.container:SetPoint("BOTTOMRIGHT", display.rows[lastRow])
 		else
 			display.container:SetPoint("TOPLEFT", display.rows[1])
@@ -758,31 +773,34 @@ function SimpleBB:UpdateAuras(type, filter)
 	for _, data in pairs(self[type]) do data.enabled = nil; data.untilCancelled = nil; end
 		
 	local time = GetTime()
-	local buffID = 1
+	local buffID = 0
 	while( true ) do
+		buffID = buffID + 1
+
 		local name, rank, texture, count, debuffType, duration, endTime, isMine, isStealable = UnitAura("player", buffID, filter)
 		if( not name ) then break end
 		
-		if( not self[type][buffID] ) then
-			self[type][buffID] = {}
+		-- Check if it's filtered
+		if( not SimpleBB.modules.Filters:IsFiltered(name) ) then
+			if( not self[type][buffID] ) then
+				self[type][buffID] = {}
+			end
+
+			local buff = self[type][buffID]
+			buff.enabled = true
+			buff.type = type
+			buff.buffIndex = buffID
+			buff.untilCancelled = duration == 0 and endTime == 0
+			buff.icon = texture
+			buff.buffType = debuffType
+			buff.stack = count or 0
+			--buff.startSeconds = duration or endTime and self:GetStartTime(type, name, rank, endTime - time) or 0
+			buff.filter = filter
+			buff.startSeconds = duration
+			buff.endTime = endTime
+			buff.name = name
+			buff.rank = tonumber(string.match(rank, "(%d+)"))
 		end
-				
-		local buff = self[type][buffID]
-		buff.enabled = true
-		buff.type = type
-		buff.buffIndex = buffID
-		buff.untilCancelled = duration == 0 and endTime == 0
-		buff.icon = texture
-		buff.buffType = debuffType
-		buff.stack = count or 0
-		--buff.startSeconds = duration or endTime and self:GetStartTime(type, name, rank, endTime - time) or 0
-		buff.filter = filter
-		buff.startSeconds = duration
-		buff.endTime = endTime
-		buff.name = name
-		buff.rank = tonumber(string.match(rank, "(%d+)"))
-		
-		buffID = buffID + 1
 	end
 end
 

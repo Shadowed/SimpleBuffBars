@@ -94,6 +94,17 @@ SimpleBBLocals = {
 	
 	["Display"] = "Display",
 	
+	["Filters"] = "Filters",
+	["Allows you to reduce the amount of buffs that are shown by using different filters to hide things that are not relevant to your current talents.\n\nThis will filter things that are not directly related to the filter type, the Physical filter will hide things like Flametongue Totem, or Divine Spirit, while the Caster filter will hide Windfury Totem or Battle Shout."] = "Allows you to reduce the amount of buffs that are shown by using different filters to hide things that are not relevant to your current talents.\n\nThis will filter things that are not directly related to the filter type, the Physical filter will hide things like Flametongue Totem, or Divine Spirit, while the Caster filter will hide Windfury Totem or Battle Shout.",
+	
+	["Auto filter"] = "Auto filter",
+	["Automatically enables the physical or caster filters based on talents and class."] = "Automatically enables the physical or caster filters based on talents and class.",
+	
+	["Physical"] = "Physical",
+	["Caster"] = "Caster",
+	["Filtering"] = "Filtering",
+	
+	
 	["Time display"] = "Time display",
 	["HH:MM:SS"] = "HH:MM:SS",
 	["Blizzard default"] = "Blizzard default",

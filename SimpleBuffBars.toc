@@ -23,4 +23,5 @@ localization.frFR.lua
 localization.zhCN.lua
 
 SimpleBuffBars.lua
+filters.lua
 config.lua

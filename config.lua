@@ -102,6 +102,35 @@ local function get(info)
 	end
 end
 
+local function setMulti(info, value, state)
+	local arg1, arg2, arg3 = string.split(".", info.arg)
+	if( tonumber(arg2) ) then arg2 = tonumber(arg2) end
+
+	if( arg2 and arg3 ) then
+		SimpleBB.db.profile[arg1][arg2][arg3][value] = state
+	elseif( arg2 ) then
+		SimpleBB.db.profile[arg1][arg2][value] = state
+	else
+		SimpleBB.db.profile[arg1][value] = state
+	end
+
+	SimpleBB:Reload()
+end
+
+local function getMulti(info, value)
+	local arg1, arg2, arg3 = string.split(".", info.arg)
+	if( tonumber(arg2) ) then arg2 = tonumber(arg2) end
+	
+	if( arg2 and arg3 ) then
+		return SimpleBB.db.profile[arg1][arg2][arg3][value]
+	elseif( arg2 ) then
+		return SimpleBB.db.profile[arg1][arg2][value]
+	else
+		return SimpleBB.db.profile[arg1][value]
+	end
+end
+
+
 local function setNumber(info, value)
 	set(info, tonumber(value))
 end
@@ -242,12 +271,12 @@ local function createAnchorOptions(group)
 			inline = true,
 			name = L["Anchor"],
 			args = {
-				size = {
+			 	size = {
 					order = 1,
 					type = "range",
 					name = L["Spacing"],
 					desc = L["How far apart this anchor should be from the one it's anchored to, does not apply if anchor to is set to none."],
-					min = 0, max = 50, step = 1,
+					min = 0, max = 100, step = 1,
 					set = setNumber,
 					arg = string.format("groups.%s.anchorSpacing", group),
 				},
@@ -454,8 +483,39 @@ local function loadOptions()
 				width = "full",
 				arg = "showTrack",
 			},
-			global = {
+			filters = {
 				order = 4,
+				type = "group",
+				inline = true,
+				name = L["Filtering"],
+				args = {
+					desc = {
+						order = 0,
+						name = L["Allows you to reduce the amount of buffs that are shown by using different filters to hide things that are not relevant to your current talents.\n\nThis will filter things that are not directly related to the filter type, the Physical filter will hide things like Flametongue Totem, or Divine Spirit, while the Caster filter will hide Windfury Totem or Battle Shout."],
+						type = "description",
+					},
+					autoFilter = {
+						order = 1,
+						type = "toggle",
+						name = L["Auto filter"],
+						desc = L["Automatically enables the physical or caster filters based on talents and class."],
+						arg = "autoFilter",
+						width = "full",
+					},
+					filters = {
+						order = 2,
+						name = L["Filters"],
+						type = "multiselect",
+						arg = "filtersEnabled",
+						disabled = function() return SimpleBB.db.profile.autoFilter end,
+						values = SimpleBB.modules.Filters:GetList(),
+						set = setMulti,
+						get = getMulti,
+					},
+				},
+			},
+			global = {
+				order = 5,
 				type = "group",
 				inline = true,
 				name = L["Global options"],

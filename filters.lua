@@ -155,16 +155,20 @@ function Filters:LoadCaster()
 	local list = {
 		-- Horn of Winter
 		[(GetSpellInfo(57623))] = true,
+		-- Stoneskin
+		[(GetSpellInfo(8072))] = true,
 		-- Strength of Earth Totem
 		[(GetSpellInfo(58643))] = true,
 		-- Battle Shout
 		[(GetSpellInfo(59614))] = true,
 		-- Blessing of Might
 		[(GetSpellInfo(56520))] = true,
+		-- Greater Blessing of Might
+		[(GetSpellInfo(48934))] = true,
 		-- Furious Howl
 		[(GetSpellInfo(59274))] = true,
 		-- Abomination's Might
-		[(GetSpellInfo(53138))] = true,
+		[(GetSpellInfo(53136))] = true,
 		-- Trueshot Aura
 		[(GetSpellInfo(31519))] = true,
 		-- Unleashed Rage
@@ -190,6 +194,8 @@ function Filters:LoadPhysical()
 		[(GetSpellInfo(57567))] = true,
 		-- Blessing of Wisdom
 		[(GetSpellInfo(56521))] = true,
+		-- Greater Blessing of Wisdom
+		[(GetSpellInfo(48938))] = true,
 		-- Replenishment
 		[(GetSpellInfo(57669))] = true,
 		-- Moonkin Aura

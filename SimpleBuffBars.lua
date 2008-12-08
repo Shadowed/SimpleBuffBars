@@ -814,13 +814,11 @@ function SimpleBB:UpdateTracking()
 		return
 	end
 	
-	print("Updated tracking")
 	self.activeTrack.enabled = nil
 	
 	for i=1, GetNumTrackingTypes() do
 		local name, texture, active, type = GetTrackingInfo(i)
 		if( active ) then
-			print("Found active", name)
 			self.activeTrack.name = name
 			self.activeTrack.icon = texture
 			self.activeTrack.trackingType = type
@@ -829,7 +827,6 @@ function SimpleBB:UpdateTracking()
 	end
 	
 	if( not self.activeTrack.enabled ) then
-		print("Found nothing, reset to none.")
 		self.activeTrack.name = L["None"]
 		self.activeTrack.icon = GetTrackingTexture()
 		self.activeTrack.trackingType = nil

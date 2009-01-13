@@ -475,15 +475,6 @@ local function OnUpdate(self)
 	self.lastUpdate = time
 	
 	self:SetValue(self.secondsLeft)
-
-	-- Timer text, need to see if this can be optimized a bit later
-	--[[
-	local hour = floor(self.secondsLeft / 3600)
-	local minutes = self.secondsLeft - (hour * 3600)
-	minutes = floor(minutes / 60)
-	
-	local seconds = self.secondsLeft - ((hour * 3600) + (minutes * 60))
-	]]
 	
 	formatTime[self.timeOption](self.timer, self.secondsLeft)
 end

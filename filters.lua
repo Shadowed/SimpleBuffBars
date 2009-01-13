@@ -181,6 +181,8 @@ function Filters:LoadCaster()
 		[(GetSpellInfo(55789))] = true,
 		-- Windfury Totem
 		[(GetSpellInfo(27621))] = true,
+		-- Strength of Earth
+		[(GetSpellInfo(8076))] = true,
 	}
 	
 	return list

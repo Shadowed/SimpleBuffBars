@@ -1,5 +1,5 @@
 --[[ 
-	Simple Buff Bars, Mayen/Amarand (Horde) from Icecrown (US) PvE
+	Simple Buff Bars, Mayen/Selari (Horde) from Illidan (US) PvP
 ]]
 
 SimpleBB = LibStub("AceAddon-3.0"):NewAddon("SimpleBB", "AceEvent-3.0")
@@ -10,9 +10,9 @@ local SML, MAINHAND_SLOT, OFFHAND_SLOT
 local mainEnabled, offEnabled
 
 local ENCHANT_ANCHOR = "tempEnchants"
+local playerUnit = "player"
 
 local frame = CreateFrame("Frame")
-
 
 function SimpleBB:OnInitialize()
 	self.defaults = {
@@ -103,40 +103,41 @@ function SimpleBB:OnInitialize()
 		self = SimpleBB
 		self:UnregisterEvent("PLAYER_ENTEIRNG_WORLD")
 		self:RegisterEvent("UNIT_AURA")
+		self:RegisterEvent("UNIT_ENTERED_VEHICLE", "CheckVehicleStatus")
+		self:RegisterEvent("UNIT_EXITED_VEHICLE", "CheckVehicleStatus")
 		self:RegisterEvent("MINIMAP_UPDATE_TRACKING", "UpdateTracking")
 		
 		-- Fixes Track Humanoids not being changed correctly
 		if( select(2, UnitClass("player")) == "DRUID" ) then
 			self:RegisterEvent("UPDATE_SHAPESHIFT_FORM", "UpdateTracking")
 		end
-
+		
+		-- Update visuals
 		self:ReloadBars()
 		
+		-- Show temp buffs? Show our timer frame then
 		if( self.db.profile.showTemp ) then
 			frame:Show()
 		else
 			frame:Hide()
 		end
 		
-		self:UNIT_AURA(nil, "player")
+		-- Update buffs
+		self:CheckVehicleStatus()
+		self:UNIT_AURA(nil, playerUnit)
 		self:UpdateTracking()
 	end)
 end
 
--- If we want a texture that was registered later after we loaded, reload the bars so it uses the correct one
-function SimpleBB:TextureRegistered(event, mediaType, key)
-	if( mediaType == SML.MediaType.STATUSBAR or mediaType == SML.MediaType.FONT ) then
-		for name, config in pairs(self.db.profile.groups) do
-			if( config.texture == key or config.font == key ) then
-				self:ReloadBars()
-				return
-			end
-		end
+-- Show the vehicle buffs if the player is in one
+function SimpleBB:CheckVehicleStatus()
+	if( UnitHasVehicleUI("player") ) then
+		playerUnit = "vehicle"
+	else
+		playerUnit = "player"
 	end
-end
-
-function SimpleBB:Print(msg)
-	DEFAULT_CHAT_FRAME:AddMessage("|cff33ff99Simple Buff Bars|r: " .. msg)
+	
+	self:UNIT_AURA(nil, playerUnit)
 end
 
 -- Configuration changed, update bars
@@ -164,7 +165,7 @@ function SimpleBB:Reload()
 	self:ReloadBars()
 
 	self.modules.Filters:Reload()
-	self:UNIT_AURA(nil, "player")
+	self:UNIT_AURA(nil, playerUnit)
 	self:UpdateTracking()
 	
 	if( ENCHANT_ANCHOR == "tempEnchants" ) then
@@ -351,7 +352,10 @@ local function OnClick(self, mouseButton)
 	end
 	
 	if( self.type == "buffs" or self.type == "debuffs" ) then
-		CancelUnitBuff("player", self.data.buffIndex, self.data.filter)
+		-- Can't cancel vehicle buffs
+		if( playerUnit == "player" ) then
+			CancelUnitBuff("player", self.data.buffIndex, self.data.filter)
+		end
 	elseif( self.type == "tempEnchants" ) then
 		CancelItemTempEnchantment(self.data.slotID - 15)
 	elseif( self.type == "tracking" ) then
@@ -362,9 +366,9 @@ end
 local function OnEnter(self)
 	GameTooltip:SetOwner(self, "ANCHOR_BOTTOMLEFT")
 	if( self.type == "buffs" ) then
-		GameTooltip:SetUnitBuff("player", self.data.buffIndex)
+		GameTooltip:SetUnitBuff(playerUnit, self.data.buffIndex)
 	elseif( self.type == "debuffs") then
-		GameTooltip:SetUnitDebuff("player", self.data.buffIndex)
+		GameTooltip:SetUnitDebuff(playerUnit, self.data.buffIndex)
 	elseif( self.type == "tempEnchants" ) then
 		GameTooltip:SetInventoryItem("player", self.data.slotID)
 	elseif( self.type == "tracking" ) then
@@ -773,7 +777,7 @@ function SimpleBB:UpdateAuras(type, filter)
 	while( true ) do
 		buffID = buffID + 1
 
-		local name, rank, texture, count, debuffType, duration, endTime, isMine, isStealable = UnitAura("player", buffID, filter)
+		local name, rank, texture, count, debuffType, duration, endTime, isMine, isStealable = UnitAura(playerUnit, buffID, filter)
 		if( not name ) then break end
 		
 		-- Check if it's filtered
@@ -886,7 +890,7 @@ end
 
 -- Update player buff/debuffs
 function SimpleBB:UNIT_AURA(event, unit)
-	if( unit ~= "player" ) then
+	if( unit ~= playerUnit ) then
 		return
 	end
 	
@@ -919,3 +923,19 @@ frame:SetScript("OnUpdate", function(self, elapsed)
 		SimpleBB:UpdateDisplay(ENCHANT_ANCHOR)
 	end
 end)
+
+-- If we want a texture that was registered later after we loaded, reload the bars so it uses the correct one
+function SimpleBB:TextureRegistered(event, mediaType, key)
+	if( mediaType == SML.MediaType.STATUSBAR or mediaType == SML.MediaType.FONT ) then
+		for name, config in pairs(self.db.profile.groups) do
+			if( config.texture == key or config.font == key ) then
+				self:ReloadBars()
+				return
+			end
+		end
+	end
+end
+
+function SimpleBB:Print(msg)
+	DEFAULT_CHAT_FRAME:AddMessage("|cff33ff99Simple Buff Bars|r: " .. msg)
+end

@@ -1,9 +1,9 @@
-svn export http://dev.wowace.com/wowace/branches/Ace3/WotLK/AceDB-3.0 --force
-svn export http://dev.wowace.com/wowace/branches/Ace3/WotLK/AceAddon-3.0 --force
-svn export http://dev.wowace.com/wowace/branches/Ace3/WotLK/AceEvent-3.0 --force
-svn export http://dev.wowace.com/wowace/branches/Ace3/WotLK/AceDBOptions-3.0 --force
-svn export http://dev.wowace.com/wowace/branches/Ace3/WotLK/AceGUI-3.0 --force
-svn export http://dev.wowace.com/wowace/branches/Ace3/WotLK/AceConfig-3.0 --force
-svn export http://dev.wowace.com/wowace/branches/Ace3/WotLK/CallbackHandler-1.0 --force
-svn export http://dev.wowace.com/wowace/trunk/AceGUI-3.0-SharedMediaWidgets --force
+svn export svn://svn.wowace.com/wow/ace3/mainline/trunk/AceDB-3.0 --force
+svn export svn://svn.wowace.com/wow/ace3/mainline/trunk/AceAddon-3.0 --force
+svn export svn://svn.wowace.com/wow/ace3/mainline/trunk/AceEvent-3.0 --force
+svn export svn://svn.wowace.com/wow/ace3/mainline/trunk/AceDBOptions-3.0 --force
+svn export svn://svn.wowace.com/wow/ace3/mainline/trunk/AceGUI-3.0 --force
+svn export svn://svn.wowace.com/wow/ace3/mainline/trunk/AceConfig-3.0 --force
+svn export svn://svn.wowace.com/wow/ace3/mainline/trunk/CallbackHandler-1.0 --force
+svn export svn://svn.wowace.com/wow/ace-gui-3-0-shared-media-widgets/mainline/trunk/AceGUI-3.0-SharedMediaWidgets --force
 @PAUSE

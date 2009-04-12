@@ -27,7 +27,7 @@ end
 
 do
 	local Type = "TreeGroup"
-	local Version = 14
+	local Version = 20
 	
 	local DEFAULT_TREE_WIDTH = 175
 	local DEFAULT_TREE_SIZABLE = true
@@ -113,20 +113,20 @@ do
 		status[button.uniquevalue] = not status[button.uniquevalue]
 		self:RefreshTree()
 	end
-    
-    local function EnableButtonTooltips(self, enable)
-    	self.enabletooltips = enable
-    end
-    
-    local function Button_OnEnter(this)
-    	local self = this.obj
-    	self:Fire("OnButtonEnter", this.uniquevalue, this)
-    	
-    	if self.enabletooltips then
-	        GameTooltip:SetOwner(this, "ANCHOR_NONE")
-	        GameTooltip:SetPoint("LEFT",this,"RIGHT")
-	        GameTooltip:SetText(this.text:GetText(), 1, .82, 0, 1)
-	    
+
+	local function EnableButtonTooltips(self, enable)
+		self.enabletooltips = enable
+	end
+
+	local function Button_OnEnter(this)
+		local self = this.obj
+		self:Fire("OnButtonEnter", this.uniquevalue, this)
+
+		if self.enabletooltips then
+			GameTooltip:SetOwner(this, "ANCHOR_NONE")
+			GameTooltip:SetPoint("LEFT",this,"RIGHT")
+			GameTooltip:SetText(this.text:GetText() or "", 1, .82, 0, 1)
+
 			GameTooltip:Show()
 		end
 	end
@@ -143,10 +143,15 @@ do
     
 	local buttoncount = 1
 	local function CreateButton(self)
-		local button = CreateFrame("Button",("AceGUI30TreeButton%d"):format(buttoncount),self.treeframe, "InterfaceOptionsButtonTemplate")
+		local button = CreateFrame("Button",("AceGUI30TreeButton%d"):format(buttoncount),self.treeframe, "OptionsListButtonTemplate")
 		buttoncount = buttoncount + 1
 		button.obj = self
-
+		
+		local icon = button:CreateTexture(nil, "OVERLAY")
+		icon:SetWidth(14)
+		icon:SetHeight(14)
+		button.icon = icon
+		
 		button:SetScript("OnClick",ButtonOnClick)
 		button:SetScript("OnDoubleClick", ButtonOnDoubleClick)
 		button:SetScript("OnEnter",Button_OnEnter)
@@ -163,6 +168,7 @@ do
 		local toggle = button.toggle
 		local frame = self.frame
 		local text = treeline.text or ""
+		local icon = treeline.icon
 		local level = treeline.level
 		local value = treeline.value
 		local uniquevalue = treeline.uniquevalue
@@ -178,18 +184,17 @@ do
 			button:UnlockHighlight()
 			button.selected = false
 		end
-		local normalText = button.text
 		local normalTexture = button:GetNormalTexture()
 		local line = button.line
 		button.level = level
 		if ( level == 1 ) then
 			button:SetNormalFontObject("GameFontNormal")
 			button:SetHighlightFontObject("GameFontHighlight")
-			button.text:SetPoint("LEFT", 8, 2)
+			button.text:SetPoint("LEFT", (icon and 16 or 0) + 8, 2)
 		else
 			button:SetNormalFontObject("GameFontHighlightSmall")
 			button:SetHighlightFontObject("GameFontHighlightSmall")
-			button.text:SetPoint("LEFT", 8 * level, 2)
+			button.text:SetPoint("LEFT", (icon and 16 or 0) + 8 * level, 2)
 		end
 		
 		if disabled then
@@ -198,6 +203,13 @@ do
 		else
 			button.text:SetText(text)
 			button:EnableMouse(true)
+		end
+		
+		if icon then
+			button.icon:SetTexture(icon)
+			button.icon:SetPoint("LEFT", button, "LEFT", 8 * level, (level == 1) and 0 or 1)
+		else
+			button.icon:SetTexture(nil)
 		end
 		
 		if canExpand then
@@ -286,39 +298,62 @@ do
 			},
 		}
 	]]
-	local function SetTree(self, tree)
-		assert(type(tree) == "table")
+	local function SetTree(self, tree, filter)
+		self.filter = filter
+		if tree then 
+			assert(type(tree) == "table") 
+		end
 		self.tree = tree
 		self:RefreshTree()
 	end
 	
+	local function ShouldDisplayLevel(tree)
+		local result = false
+		for k, v in ipairs(tree) do
+			if v.children == nil and v.visible ~= false then
+				result = true
+			elseif v.children then
+				result = result or ShouldDisplayLevel(v.children)
+			end
+			if result then return result end
+		end
+		return false
+	end
+	
+	local function addLine(self, v, tree, level, parent)
+		local line = new()
+		line.value = v.value
+		line.text = v.text
+		line.icon = v.icon
+		line.disabled = v.disabled
+		line.tree = tree
+		line.level = level
+		line.parent = parent
+		line.visible = v.visible
+		line.uniquevalue = GetButtonUniqueValue(line)
+		if v.children then
+			line.hasChildren = true
+		else
+			line.hasChildren = nil
+		end		
+		self.lines[#self.lines+1] = line
+		return line
+	end
+	
 	local function BuildLevel(self, tree, level, parent)
-		local lines = self.lines
-
-		local status = (self.status or self.localstatus)
-		local groups = status.groups
+		local groups = (self.status or self.localstatus).groups
 		local hasChildren = self.hasChildren
 		
 		for i, v in ipairs(tree) do
-			local line = new()
-			lines[#lines+1] = line
-			line.value = v.value
-			line.text = v.text
-			line.disabled = v.disabled
-			line.tree = tree
-			line.level = level
-			line.parent = parent
-			line.uniquevalue = GetButtonUniqueValue(line)
-			
 			if v.children then
-				line.hasChildren = true
-			else
-				line.hasChildren = nil
-			end
-			if v.children then
-				if groups[line.uniquevalue] then
-					self:BuildLevel(v.children, level+1, line)
+				if not self.filter or ShouldDisplayLevel(v.children) then
+					local line = addLine(self, v, tree, level, parent)
+					if groups[line.uniquevalue] then
+						self:BuildLevel(v.children, level+1, line)
+					end
 				end
+			elseif v.visible ~= false or not self.filter then
+				addLine(self, v, tree, level, parent)
 			end
 		end
 	end
@@ -335,30 +370,29 @@ do
 	end
 	
 	local function RefreshTree(self)
-		if not self.tree then return end
-		--Build the list of visible entries from the tree and status tables
-		local status = self.status or self.localstatus
-		local groupstatus = status.groups
-		local tree = self.tree
+		local buttons = self.buttons 
 		local lines = self.lines
-		local buttons = self.buttons
-
-		local treeframe = self.treeframe
-
 		
+		for i, v in ipairs(buttons) do
+			v:Hide()
+		end
 		while lines[1] do
 			local t = tremove(lines)
 			for k in pairs(t) do
 				t[k] = nil
 			end
 			del(t)
-		end
+		end		
 		
+		if not self.tree then return end
+		--Build the list of visible entries from the tree and status tables
+		local status = self.status or self.localstatus
+		local groupstatus = status.groups
+		local tree = self.tree
+
+		local treeframe = self.treeframe
+
 		self:BuildLevel(tree, 1)
-		
-		for i, v in ipairs(buttons) do
-			v:Hide()
-		end
 		
 		local numlines = #lines
 		
@@ -435,6 +469,7 @@ do
 	end
 	
 	local function Select(self, uniquevalue, ...)
+		self.filter = false
 		local status = self.status or self.localstatus
 		local groups = status.groups
 		for i = 1, select('#', ...) do
@@ -471,11 +506,10 @@ do
 	end
 	
 	local function OnWidthSet(self, width)
-
 		local content = self.content
 		local treeframe = self.treeframe
 		local status = self.status or self.localstatus
-
+		
 		local contentwidth = width - status.treewidth - 20
 		if contentwidth < 0 then
 			contentwidth = 0
@@ -516,26 +550,26 @@ do
 		end
 	end
 	
-    local function SetTreeWidth(self, treewidth, resizable)
-        if not resizable then
-            if type(treewidth) == 'number' then
-                resizable = false
-            elseif type(treewidth) == 'boolean' then
-                resizable = treewidth
-                treewidth = DEFAULT_TREE_WIDTH
-            else
-                resizable = false
-                treewidth = DEFAULT_TREE_WIDTH 
-            end
-        end
-        self.treeframe:SetWidth(treewidth)
+	local function SetTreeWidth(self, treewidth, resizable)
+		if not resizable then
+			if type(treewidth) == 'number' then
+				resizable = false
+			elseif type(treewidth) == 'boolean' then
+				resizable = treewidth
+				treewidth = DEFAULT_TREE_WIDTH
+			else
+				resizable = false
+				treewidth = DEFAULT_TREE_WIDTH 
+			end
+		end
+		self.treeframe:SetWidth(treewidth)
 		self.dragger:EnableMouse(resizable)
 		
 		local status = self.status or self.localstatus
-    	status.treewidth = treewidth
-    	status.treesizable = resizable
-    end
-    
+		status.treewidth = treewidth
+		status.treesizable = resizable
+	end
+	
 	local function draggerLeave(this)
 		this:SetBackdropColor(1, 1, 1, 0)
 	end
@@ -560,10 +594,15 @@ do
 		treeframe:SetHeight(0)
 		treeframe:SetPoint("TOPLEFT",frame,"TOPLEFT",0,0)
 		treeframe:SetPoint("BOTTOMLEFT",frame,"BOTTOMLEFT",0,0)
-        treeframe.obj:Fire("OnTreeResize",treeframe:GetWidth())
-        
-        local status = self.status or self.localstatus
-    	status.treewidth = treeframe:GetWidth()
+		treeframe.obj:Fire("OnTreeResize",treeframe:GetWidth())
+		
+		local status = self.status or self.localstatus
+		status.treewidth = treeframe:GetWidth()
+	end
+	
+	local function LayoutFinished(self, width, height)
+		if self.noAutoHeight then return end
+		self:SetHeight((height or 0) + 20)
 	end
 
 	local createdcount = 0
@@ -577,6 +616,7 @@ do
 		self.hasChildren = {}
 		self.localstatus = {}
 		self.localstatus.groups = {}
+		self.filter = false
 		
 		local treeframe = CreateFrame("Frame",nil,frame)
 		treeframe.obj = self
@@ -592,7 +632,7 @@ do
 		treeframe:SetBackdropColor(0.1,0.1,0.1,0.5)
 		treeframe:SetBackdropBorderColor(0.4,0.4,0.4)
 		
-        treeframe:SetResizable(true)
+		treeframe:SetResizable(true)
 		treeframe:SetMinResize(100, 1)
 		treeframe:SetMaxResize(400,1600)
 		local dragger = CreateFrame("Frame", nil, treeframe)
@@ -606,13 +646,13 @@ do
 		dragger:SetScript("OnEnter", draggerEnter)
 		dragger:SetScript("OnLeave", draggerLeave)
 		
-        self.dragger = dragger
+		self.dragger = dragger
 		self.treeframe = treeframe
 		self.OnRelease = OnRelease
 		self.OnAcquire = OnAcquire
 		
 		self.SetTree = SetTree
-        self.SetTreeWidth = SetTreeWidth
+		self.SetTreeWidth = SetTreeWidth
 		self.RefreshTree = RefreshTree
 		self.SetStatusTable = SetStatusTable
 		self.BuildLevel = BuildLevel
@@ -626,6 +666,8 @@ do
 		self.OnWidthSet = OnWidthSet
 		self.OnHeightSet = OnHeightSet		
 		self.EnableButtonTooltips = EnableButtonTooltips
+		self.Filter = Filter
+		self.LayoutFinished = LayoutFinished
 		
 		self.frame = frame
 		frame.obj = self

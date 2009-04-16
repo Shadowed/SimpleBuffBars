@@ -560,7 +560,7 @@ local function loadOptions()
 	}
 	
 	options.args.tempEnchants.args.bar.args.color.args.color = nil
-	options.args.tempEnchants.args.anchor.args.to.values.tempenchants = nil
+	options.args.tempEnchants.args.anchor.args.to.values.tempEnchants = nil
 
 	-- Debuff configuration
 	options.args.debuffs = {

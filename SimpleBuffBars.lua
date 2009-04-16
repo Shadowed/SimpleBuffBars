@@ -219,7 +219,7 @@ local function OnShow(self)
 
 	-- Check if something is anchored to us, if it is then we need to reposition them
 	for name, data in pairs(SimpleBB.db.profile.groups) do
-		if( data.anchorTo == self.name ) then
+		if( data.anchorTo == self.name and self.name ~= name ) then
 			OnShow(SimpleBB.groups[name])
 		end
 	end

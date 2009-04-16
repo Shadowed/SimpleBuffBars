@@ -172,7 +172,7 @@ function Filters:LoadCaster()
 		-- Trueshot Aura
 		[(GetSpellInfo(31519))] = true,
 		-- Unleashed Rage
-		[(GetSpellInfo(30811))] = true,
+		[(GetSpellInfo(30805))] = true,
 		-- Leader of the Pack
 		[(GetSpellInfo(24932))] = true,
 		-- Rampage

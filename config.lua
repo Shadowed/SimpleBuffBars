@@ -276,7 +276,7 @@ local function createAnchorOptions(group)
 					type = "range",
 					name = L["Spacing"],
 					desc = L["How far apart this anchor should be from the one it's anchored to, does not apply if anchor to is set to none."],
-					min = 0, max = 100, step = 1,
+					min = -100, max = 100, step = 1,
 					set = setNumber,
 					arg = string.format("groups.%s.anchorSpacing", group),
 				},

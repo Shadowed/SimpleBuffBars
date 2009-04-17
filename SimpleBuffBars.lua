@@ -842,9 +842,9 @@ function SimpleBB:ParseName(slotID)
 	
 	for i=1, self.tooltip:NumLines() do
 		local text = getglobal("SimpleBBTooltipTextLeft" .. i):GetText()
-		local name = string.match(text, "^(.+) %(%d+ [^%)]+%)$")
+		local name = string.match(text, "^(.+) %(%d+[^%)]+%)$")
 		if( name ) then
-			local tName, rank = string.match(name, "^(.+) ([0-9]+)$")
+			local tName, rank = string.match(name, "^(.*)(%w*)$")
 			if( tName and rank ) then
 				name = tName
 			end

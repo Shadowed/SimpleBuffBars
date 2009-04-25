@@ -398,7 +398,7 @@ local function loadOptions()
 				order = 0.50,
 				type = "toggle",
 				name = L["Enable extra units"],
-				desc = L["Allows you to configure and show buff bars for target, focus and pet units."],
+				desc = L["Allows you to configure and show buff bars for target, focus and pet units.\nDisabling this will reset the anchor configuration for those three units."],
 			},
 			showExample = {
 				order = 1,

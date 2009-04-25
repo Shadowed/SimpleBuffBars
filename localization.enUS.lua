@@ -8,7 +8,7 @@ SimpleBBLocals = {
 	["Shows your current temporary weapon enchants as a buff."] = "Shows your current temporary weapon enchants as a buff.",
 	
 	["Enable extra units"] = "Enable extra units",
-	["Allows you to configure and show buff bars for target, focus and pet units."] = "Allows you to configure and show buff bars for target, focus and pet units.",
+	["Allows you to configure and show buff bars for target, focus and pet units.\nDisabling this will reset the anchor configuration for those three units."] = "Allows you to configure and show buff bars for target, focus and pet units.\nDisabling this will reset the anchor configuration for those three units.",
 	
 	["Show examples"] = "Show examples",
 	["Shows an example buff/debuff for configuration."] = "Shows an example buff/debuff for configuration.",

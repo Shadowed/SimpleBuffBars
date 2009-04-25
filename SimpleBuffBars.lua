@@ -837,12 +837,6 @@ end
 -- Update temp weapon enchants
 local tempStartTime = {}
 function SimpleBB:UpdateTempEnchant(buff, slotID, hasEnchant, timeLeft, charges)
-	-- No enchant
-	if( not hasEnchant ) then
-		buff.enabled = false
-		return
-	end
-	
 	local name, rank = self:ParseName(slotID)
 	
 	-- When the players entering/leaving the world, we get a bad return on the name/rank
@@ -884,11 +878,20 @@ frame:SetScript("OnUpdate", function(self, elapsed)
 		self = SimpleBB
 
 		local hasMain, mainTimeLeft, mainCharges, hasOff, offTimeLeft, offCharges = GetWeaponEnchantInfo()
-		MAINHAND_BUFF_INDEX = MAINHAND_BUFF_INDEX or self:FindAvailableIndex(ENCHANT_ANCHOR, "tempEnchants")
-		self:UpdateTempEnchant(self.auras[ENCHANT_ANCHOR][MAINHAND_BUFF_INDEX], MAINHAND_SLOT, hasMain, mainTimeLeft, mainCharges)
 		
-		OFFHAND_BUFF_INDEX= OFFHAND_BUFF_INDEX or self:FindAvailableIndex(ENCHANT_ANCHOR, "tempEnchants")
-		self:UpdateTempEnchant(self.auras[ENCHANT_ANCHOR][OFFHAND_BUFF_INDEX], OFFHAND_SLOT, hasOff, offTimeLeft, offCharges)
+		if( hasMain ) then
+			MAINHAND_BUFF_INDEX = MAINHAND_BUFF_INDEX or self:FindAvailableIndex(ENCHANT_ANCHOR, "tempEnchants")
+			self:UpdateTempEnchant(self.auras[ENCHANT_ANCHOR][MAINHAND_BUFF_INDEX], MAINHAND_SLOT, hasMain, mainTimeLeft, mainCharges)
+		elseif( MAINHAND_BUFF_INDEX ) then
+			self.auras[ENCHANT_ANCHOR][MAINHAND_BUFF_INDEX].enabled = false
+		end
+		
+		if( hasOff ) then
+			OFFHAND_BUFF_INDEX = OFFHAND_BUFF_INDEX or self:FindAvailableIndex(ENCHANT_ANCHOR, "tempEnchants")
+			self:UpdateTempEnchant(self.auras[ENCHANT_ANCHOR][OFFHAND_BUFF_INDEX], OFFHAND_SLOT, hasOff, offTimeLeft, offCharges)
+		elseif( OFFHAND_BUFF_INDEX ) then
+			self.auras[ENCHANT_ANCHOR][OFFHAND_BUFF_INDEX].enabled = false
+		end
 		
 		-- Update if needed
 		SimpleBB:UpdateDisplay(ENCHANT_ANCHOR)

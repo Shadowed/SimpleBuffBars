@@ -2,6 +2,8 @@ if( not SimpleBB ) then return end
 
 local Extras = SimpleBB:NewModule("Extras", "AceEvent-3.0")
 local L = SimpleBBLocals
+local units = {["target"] = true, ["focus"] = true, ["pet"] = true}
+local groups = {"targetbuffs", "targetdebuffs", "focusbuffs", "focusdebuffs", "petbuffs", "petdebuffs"}
 
 function Extras:OnInitialize()
 	if( SimpleBB.db.profile.showExtras ) then
@@ -9,6 +11,31 @@ function Extras:OnInitialize()
 	end
 end
 
+function Extras:UNIT_AURA(event, unit)
+	if( not units[unit] ) then
+		return
+	end
+	
+	SimpleBB:UpdateAuras(unit .. "buffs", unit, "buffs", "HELPFUL|PASSIVE")
+	SimpleBB:UpdateDisplay(unit .. "buffs")
+
+	SimpleBB:UpdateAuras(unit .. "debuffs", unit, "debuffs", "HARMFUL")
+	SimpleBB:UpdateDisplay(unit .. "debuffs")
+end
+
+function Extras:PLAYER_TARGET_CHANGED()
+	self:UNIT_AURA(nil, "target")
+end
+
+function Extras:PLAYER_PET_CHANGED()
+	self:UNIT_AURA(nil, "pet")
+end
+
+function Extras:PLAYER_FOCUS_CHANGED()
+	self:UNIT_AURA(nil, "focus")
+end
+
+-- Managing if it's enabled/disabled/etc
 function Extras:Enable()
 	if( self.enabled ) then
 		return
@@ -17,22 +44,25 @@ function Extras:Enable()
 	self.enabled = true
 	
 	-- Create DB defaults
-	self.defaults.profile.groups.target = CopyTable(self.defaults.profile.anchors)
-	self.defaults.profile.groups.target.enabled = false
-	self.defaults.profile.groups.target.name = L["Target"]
-
-	self.defaults.profile.groups.focus = CopyTable(self.defaults.profile.anchors)
-	self.defaults.profile.groups.focus.enabled = false
-	self.defaults.profile.groups.focus.name = L["Focus"]
-
-	self.defaults.profile.groups.pet = CopyTable(self.defaults.profile.anchors)
-	self.defaults.profile.groups.pet.enabled = false
-	self.defaults.profile.groups.pet.name = L["Pet"]
-
+	for _, key in pairs(groups) do
+		if( not SimpleBB.db.profile.groups[key] ) then
+			SimpleBB.db.profile.groups[key] = CopyTable(SimpleBB.defaults.profile.anchors)
+			SimpleBB.db.profile.groups[key].enabled = false
+			SimpleBB.db.profile.groups[key].name = L[key]
+		end
+	end
+	
+	-- Create groups
+	SimpleBB:UpdateGroups()
+	
 	-- Create configuration
 	self:CreateConfiguration()
 	
 	-- Register events
+	self:RegisterEvent("UNIT_AURA")
+	self:RegisterEvent("PLAYER_TARGET_CHANGED")
+	self:RegisterEvent("PLAYER_PET_CHANGED")
+	self:RegisterEvent("PLAYER_FOCUS_CHANGED")
 end
 
 function Extras:Disable()
@@ -43,28 +73,15 @@ function Extras:Disable()
 	self.enabled = nil
 	
 	-- Reset DB data
-	SimpleBB.db.profile.groups.target = nil
-	SimpleBB.db.profile.groups.focus = nil
-	SimpleBB.db.profile.groups.pet = nil
-	
-	-- Remove group anchors
-	SimpleBB.groups.target:Hide()
-	SimpleBB.groups.target = nil
-	
-	SimpleBB.groups.focus:Hide()
-	SimpleBB.groups.focus = nil
-	
-	SimpleBB.groups.pet:Hide()
-	SimpleBB.groups.pet = nil
-	
-	-- Remove any configuration
-	if( SimpleBB.modules.Config.options ) then
-		local options = SimpleBB.modules.Config.options
-		options.args.target = nil
-		options.args.focus = nil
-		options.args.pet = nil
+	for _, key in pairs(groups) do
+		SimpleBB.db.profile.groups[key] = nil
+		SimpleBB.groups[key]:Hide()
+		
+		if( SimpleBB.modules.Config.options ) then
+			SimpleBB.modules.Config.options.args[key] = nil
+		end
 	end
-	
+		
 	-- Unregister all events so it stops updating
 	self:UnregisterAllEvents()
 end
@@ -80,13 +97,15 @@ end
 
 -- Creates the configuration for these
 function Extras:CreateConfiguration()
-	if( not SimpleBB.db.profile.showExtras or not SimpleBB.modules.Config.options or SimpleBB.modules.Config.options.args.target ) then
+	if( not SimpleBB.db.profile.showExtras or not SimpleBB.modules.Config.options ) then
 		return
 	end
 	
 	local Config = SimpleBB.modules.Config
-	local options = Config.options
-	options.args.target = Config:CreateAnchorSettings("target", L["Target"])
-	options.args.focus = Config:CreateAnchorSettings("focus", L["Focus"])
-	options.args.pet = Config:CreateAnchorSettings("pet", L["Pet"])
+	for _, key in pairs(groups) do
+		if( not Config.options.args[key] ) then
+			Config.options.args[key] = Config:CreateGroupConfig(key, L[key])
+		end
+	end
 end
+

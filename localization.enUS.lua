@@ -28,9 +28,12 @@ SimpleBBLocals = {
 	["Player buffs"] = "Player buffs",
 	["Player debuffs"] = "Player debuffs",
 	["Temporary enchants"] = "Temporary enchants",
-	["Pet"] = "Pet",
-	["Target"] = "Target",
-	["Focus"] = "Focus",
+	["petbuffs"] = "Pet buffs",
+	["petdebuffs"] = "Pet debuffs",
+	["targetbuffs"] = "Target buffs",
+	["targetdebuffs"] = "Target debuffs",
+	["focusbuffs"] = "Focus buffs",
+	["focusdebuffs"] = "Focus debuffs",
 	
 	["Anchor configuration for %ss."] = "Anchor configuration for %ss.",
 

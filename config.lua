@@ -360,6 +360,20 @@ function Config:CreateAnchorSettings(group, name)
 	}
 end
 
+local order = 1
+function Config:CreateGroupConfig(key, name)
+	order = order + 1
+	return {
+		order = order,
+		type = "group",
+		name = name,
+		get = getGroupOption,
+		set = setGroupOption,
+		handler = Config,
+		args = Config:CreateAnchorSettings(key, name),
+	}
+end
+
 local function loadOptions()
 	options = {}
 	options.type = "group"
@@ -455,23 +469,23 @@ local function loadOptions()
 	globalOptions.general.args.passive = nil
 	globalOptions.general.args.enabled.width = "full"
 	
-	-- Create anchor configuration
-	local order = 2
+	-- Create anchor configuration, first sort it so they all end up nice and lined up.
+	local groups = {}
 	for key, group in pairs(SimpleBB.db.profile.groups) do
-		options.args[key] = {
-			order = order,
-			type = "group",
-			name = group.name,
-			get = getGroupOption,
-			set = setGroupOption,
-			handler = Config,
-			args = Config:CreateAnchorSettings(key, group.name),
-		}
+		table.insert(groups, key)
+	end
+	
+	table.sort(groups, function(a, b)
+		return a > b
+	end)
+	
+	for _, key in pairs(groups) do
+		options.args[key] = Config:CreateGroupConfig(key, SimpleBB.db.profile.groups[key].name)
 	end
 	
 	-- DB Profiles
 	options.args.profile = LibStub("AceDBOptions-3.0"):GetOptionsTable(SimpleBB.db)
-	options.args.profile.order = 5
+	options.args.profile.order = 99999
 	
 	-- Lets modules access the configuration
 	Config.options = options

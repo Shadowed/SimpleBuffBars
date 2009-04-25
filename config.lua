@@ -4,7 +4,6 @@ local Config = SimpleBB:NewModule("Config")
 local L = SimpleBBLocals
 
 local SML, registered, options, config, dialog
-
 local globalSettings = {}
 
 function Config:OnInitialize()
@@ -19,34 +18,7 @@ function Config:OnInitialize()
 			globalSettings[k] = v
 		end
 	end
-
-	-- Buff examples for making configuration easier
-	SimpleBB.example = {
-		["buffs"] = {
-			enabled = true, type = "buffs", buffIndex = 0,
-			buffType = "none", name = "Buff of test",
-			icon = "Interface\\Icons\\Spell_Frost_WizardMark",
-			stack = 3, rank = 3,
-			timeLeft = 534, startSeconds = 800,
-			endTime = GetTime() + 543,
-		},
-		["debuffs"] = {
-			enabled = true, type = "debuffs", buffIndex = -1,
-			buffType = "Curse", name = "Debuff of pain",
-			icon = "Interface\\Icons\\Spell_Nature_RemoveCurse",
-			stack = 2, rank = 5,
-			timeLeft = 253, startSeconds = 400,
-			endTime = GetTime() + 253,
-		},
-		["tempEnchants"] = {
-			enabled = true, type = "tempEnchants", slotID = 16,
-			buffType = "none", name = "Temporary enchant of awesome",
-			icon = "Interface\\Icons\\INV_Potion_100",
-			timeLeft = 900, startSeconds = 950,
-			endTime = GetTime() + 900,
-		},
-	}
-
+	
 	-- Register bar textures
 	SML = LibStub:GetLibrary("LibSharedMedia-3.0")
 	SML:Register(SML.MediaType.STATUSBAR, "BantoBar",   "Interface\\Addons\\SimpleBuffBars\\images\\banto")
@@ -61,91 +33,61 @@ function Config:OnInitialize()
 end
 
 -- GUI
-local function setGlobal(arg1, arg2, arg3, value)
-	for name in pairs(SimpleBB.db.profile.groups) do
-		SimpleBB.db.profile[arg1][name][arg3] = value
-		globalSettings[arg3] = value
+-- Setting group options
+local function setGroupOption(info, value)
+	local cat = info[1]
+	local key = info[#(info)]
+	if( cat == "general" ) then
+		globalSettings[key] = value
+		
+		for _, group in pairs(SimpleBB.db.profile.groups) do
+			group[key] = value
+		end
+		
+		SimpleBB:Reload()
+		return
 	end
 	
+	SimpleBB.db.profile.groups[cat][key] = value
 	SimpleBB:Reload()
 end
 
-
-local function set(info, value)
-	local arg1, arg2, arg3 = string.split(".", info.arg)
-	
-	if( arg2 == "global" ) then
-		setGlobal(arg1, arg2, arg3, value)
-		return
-	elseif( arg2 and arg3 ) then
-		SimpleBB.db.profile[arg1][arg2][arg3] = value
-	elseif( arg2 ) then
-		SimpleBB.db.profile[arg1][arg2] = value
-	else
-		SimpleBB.db.profile[arg1] = value
+local function getGroupOption(info)
+	local cat = info[1]
+	local key = info[#(info)]
+	if( cat == "general" ) then
+		return globalSettings[key]
 	end
 	
+	return SimpleBB.db.profile.groups[cat][key]
+end
+
+local function setGroupColor(info, r, g, b)
+	setGroupOption(info, {r = r, g = g, b = b})
+end
+
+local function getGroupColor(info)
+	local value = getGroupOption(info)
+	return value.r, value.g, value.b
+end
+
+-- Setting single options
+local function set(info, value)
+	SimpleBB.db.profile[info[#(info)]] = value
 	SimpleBB:Reload()
 end
 
 local function get(info)
-	local arg1, arg2, arg3 = string.split(".", info.arg)
-	
-	if( arg2 == "global" ) then
-		return globalSettings[arg3]
-	elseif( arg2 and arg3 ) then
-		return SimpleBB.db.profile[arg1][arg2][arg3]
-	elseif( arg2 ) then
-		return SimpleBB.db.profile[arg1][arg2]
-	else
-		return SimpleBB.db.profile[arg1]
-	end
+	return SimpleBB.db.profile[info[#(info)]]
 end
 
-local function setMulti(info, value, state)
-	local arg1, arg2, arg3 = string.split(".", info.arg)
-	if( tonumber(arg2) ) then arg2 = tonumber(arg2) end
-
-	if( arg2 and arg3 ) then
-		SimpleBB.db.profile[arg1][arg2][arg3][value] = state
-	elseif( arg2 ) then
-		SimpleBB.db.profile[arg1][arg2][value] = state
-	else
-		SimpleBB.db.profile[arg1][value] = state
-	end
-
+local function setMulti(info, key, state)
+	SimpleBB.db.profile[info[#(info)]][key] = state
 	SimpleBB:Reload()
 end
 
-local function getMulti(info, value)
-	local arg1, arg2, arg3 = string.split(".", info.arg)
-	if( tonumber(arg2) ) then arg2 = tonumber(arg2) end
-	
-	if( arg2 and arg3 ) then
-		return SimpleBB.db.profile[arg1][arg2][arg3][value]
-	elseif( arg2 ) then
-		return SimpleBB.db.profile[arg1][arg2][value]
-	else
-		return SimpleBB.db.profile[arg1][value]
-	end
-end
-
-
-local function setNumber(info, value)
-	set(info, tonumber(value))
-end
-
-local function setColor(info, r, g, b)
-	set(info, {r = r, g = g, b = b})
-end
-
-local function getColor(info)
-	local value = get(info)
-	if( type(value) == "table" ) then
-		return value.r, value.g, value.b
-	end
-	
-	return value
+local function getMulti(info, key)
+	return SimpleBB.db.profile[info[#(info)]][key]
 end
 
 local textures = {}
@@ -170,12 +112,27 @@ function Config:GetFonts()
 	return fonts
 end
 
+local groupList = {}
+function Config:GetGroupList(info)
+	for k in pairs(groupList) do groupList[k] = nil end
+	
+	groupList[""] = L["None"]
+	
+	for key, group in pairs(SimpleBB.db.profile.groups) do
+		if( key ~= info[1] ) then
+			groupList[key] = group.name
+		end
+	end
+	
+	return groupList
+end
+
 local timeDisplay = {["hhmmss"] = L["HH:MM:SS"], ["blizzard"] = L["Blizzard default"]}
-local function createAnchorOptions(group)
+function Config:CreateAnchorSettings(group, name)
 	return {
 		desc = {
 			order = 0,
-			name = string.format(L["Anchor configuration for %ss."], group),
+			name = string.format(L["%s anchor configuration."], name),
 			type = "description",
 		},
 		general = {
@@ -184,26 +141,28 @@ local function createAnchorOptions(group)
 			inline = true,
 			name = L["General"],
 			args = {
+				enabled = {
+					order = 0.25,
+					type = "toggle",
+					name = L["Enable group"],
+					desc = L["Enable showing this group, if it's disabled then no timers will appear inside."],
+				},
 				growUp = {
-					order = 0,
+					order = 0.75,
 					type = "toggle",
 					name = L["Grow display up"],
 					desc = L["Instead of adding everything from top to bottom, timers will be shown from bottom to top."],
-					arg = string.format("groups.%s.growUp", group),
-					width = "full",
 				},
-				timeless = {
+				fillTimeless = {
 					order = 1,
 					type = "toggle",
 					name = L["Fill timeless buffs"],
 					desc = L["Buffs without a duration will have the status bar shown as filled in, instead of empty."],
-					arg = string.format("groups.%s.fillTimeless", group),
 				},
 				passive = {
 					order = 2,
 					type = "toggle",
 					name = L["Hide passive buffs"],
-					arg = string.format("groups.%s.passive", group),
 				},
 				sep = {
 					order = 3,
@@ -215,53 +174,34 @@ local function createAnchorOptions(group)
 					type = "range",
 					name = L["Display scale"],
 					desc = L["How big the actual timers should be."],
-					min = 0.01, max = 2, step = 0.01,
-					arg = string.format("groups.%s.scale", group),
+					min = 0.01, max = 2, step = 0.01, isPercent = true,
 				},
 				alpha = {
 					order = 5,
 					type = "range",
 					name = L["Display alpha"],
-					min = 0, max = 1, step = 0.1,
-					arg = string.format("groups.%s.alpha", group),
+					min = 0, max = 1, step = 0.01,
 				},
-				sep = {
-					order = 6,
-					name = "",
-					type = "description",
-				},
-				--[[
-				maxRows = {
+				spacing = {
 					order = 6,
 					type = "range",
-					name = L["Max timers"],
-					desc = L["Maximum amount of timers that should be ran per an anchor at the same time, if too many are running at the same time then the new ones will simply be hidden until older ones are removed."],
-					min = 1, max = 100, step = 1,
-					arg = string.format("groups.%s.maxRows", group),
+					name = L["Row spacing"],
+					desc = L["How far apart each timer bar should be."],
+					min = -20, max = 20, step = 1,
+					width = "full",
 				},
-				]]
-				sorting = {
+				sortBy = {
 					order = 7,
 					type = "select",
 					name = L["Buff sorting"],
 					desc = L["Sorting information\nTime Left:\nTracking > Auras > Temporary weapon enchant > Buffs by time left\n\nOrder gained:\nTracking > Temporary weapon enchant > Auras > Buffs by order added."],
 					values = {["timeleft"] = L["Time left"], ["index"] = L["Order gained"]},
-					arg = string.format("groups.%s.sortBy", group),
 				},
-				icon = {
+				iconPosition = {
 					order = 8,
 					type = "select",
 					name = L["Icon position"],
 					values = {["LEFT"] = L["Left"], ["RIGHT"] = L["Right"]},
-					arg = string.format("groups.%s.iconPosition", group),
-				},
-				spacing = {
-					order = 9,
-					type = "range",
-					name = L["Row spacing"],
-					desc = L["How far apart each timer bar should be."],
-					min = -20, max = 20, step = 1,
-					arg = string.format("groups.%s.spacing", group),
 				},
 			}
 		},
@@ -271,22 +211,19 @@ local function createAnchorOptions(group)
 			inline = true,
 			name = L["Anchor"],
 			args = {
-			 	size = {
+			 	anchorSpacing = {
 					order = 1,
 					type = "range",
 					name = L["Spacing"],
 					desc = L["How far apart this anchor should be from the one it's anchored to, does not apply if anchor to is set to none."],
 					min = -100, max = 100, step = 1,
-					set = setNumber,
-					arg = string.format("groups.%s.anchorSpacing", group),
 				},
-				to = {
+				anchorTo = {
 					order = 2,
 					type = "select",
 					name = L["Anchor to"],
 					desc = string.format(L["Lets you anchor %ss to another anchor where it'll be shown below it and positioned so that they never overlap."], group),
-					values = {[""] = L["None"], ["buffs"] = L["Buffs"], ["debuffs"] = L["Debuffs"], ["tempEnchants"] = L["Temporary enchants"]},
-					arg = string.format("groups.%s.anchorTo", group),
+					values = "GetGroupList",
 				},
 			},
 		},
@@ -295,23 +232,22 @@ local function createAnchorOptions(group)
 			type = "group",
 			inline = true,
 			name = L["Temporary enchants"],
+			hidden = function(info) if( info[1] ~= "tempEnchants" ) then return true end end,
 			args = {
-				to = {
+				moveTo = {
 					order = 2,
 					type = "select",
 					name = L["Move to"],
 					desc = L["Allows you to move the temporary weapon enchants into another anchor."],
 					values = {[""] = L["None"], ["buffs"] = L["Buffs"], ["debuffs"] = L["Debuffs"]},
-					arg = string.format("groups.%s.moveTo", group),
 				},
 				tempColor = {
 					order = 4,
 					type = "color",
 					name = L["Temporary enchant colors"],
 					desc = L["Bar and background color for temporary weapon enchants, only used if color by type is enabled."],
-					set = setColor,
-					get = getColor,
-					arg = string.format("groups.%s.tempColor", group),
+					set = setGroupColor,
+					get = getGroupColor,
 				},
 			},
 		},
@@ -326,16 +262,12 @@ local function createAnchorOptions(group)
 					type = "range",
 					name = L["Width"],
 					min = 50, max = 300, step = 1,
-					set = setNumber,
-					arg = string.format("groups.%s.width", group),
 				},
 				height = {
 					order = 2,
 					type = "range",
 					name = L["Height"],
 					min = 1, max = 30, step = 1,
-					set = setNumber,
-					arg = string.format("groups.%s.height", group),
 				},
 				sep = {
 					order = 3,
@@ -348,7 +280,6 @@ local function createAnchorOptions(group)
 					name = L["Texture"],
 					dialogControl = "LSM30_Statusbar",
 					values = "GetTextures",
-					arg = string.format("groups.%s.texture", group),
 				},
 				color = {
 					order = 5,
@@ -356,21 +287,19 @@ local function createAnchorOptions(group)
 					inline = true,
 					name = L["Colors"],
 					args = {
-						colorType = {
+						colorbyType = {
 							order = 1,
 							type = "toggle",
 							name = L["Color by type"],
 							desc = L["Sets the bar color to the buff type, if it's a buff light blue, temporary weapon enchants purple, debuffs will be colored by magic type, or red if none."],
-							arg = string.format("groups.%s.colorByType", group),
 						},
-						baseColor = {
+						color = {
 							order = 3,
 							type = "color",
 							name = L["Color"],
 							desc = L["Bar color and background color, if color by type is enabled then this only applies to buffs and tracking."],
-							set = setColor,
-							get = getColor,
-							arg = string.format("groups.%s.color", group),
+							set = setGroupColor,
+							get = getGroupColor,
 						},
 					},
 				},
@@ -382,21 +311,19 @@ local function createAnchorOptions(group)
 			inline = true,
 			name = L["Text"],
 			args = {
-				size = {
+				fontSize = {
 					order = 1,
 					type = "range",
 					name = L["Size"],
 					min = 1, max = 20, step = 1,
 					set = setNumber,
-					arg = string.format("groups.%s.fontSize", group),
 				},
-				name = {
+				font = {
 					order = 2,
 					type = "select",
 					name = L["Font"],
 					dialogControl = "LSM30_Font",
 					values = "GetFonts",
-					arg = string.format("groups.%s.font", group),
 				},
 				display = {
 					order = 3,
@@ -404,31 +331,27 @@ local function createAnchorOptions(group)
 					inline = true,
 					name = L["Display"],
 					args = {
-						stack = {
+						showStack = {
 							order = 1,
 							type = "toggle",
 							name = L["Show stack size"],
-							arg = string.format("groups.%s.showStack", group),
 							width = "full",
 						},
 						stackFirst = {
 							order = 2,
 							type = "toggle",
 							name = L["Show stack first"],
-							arg = string.format("groups.%s.stackFirst", group),
 						},
-						rank = {
+						showRank = {
 							order = 3,
 							type = "toggle",
 							name = L["Show spell rank"],
-							arg = string.format("groups.%s.showRank", group),
 						},
-						name = {
+						time = {
 							order = 4,
 							type = "select",
 							name = L["Time display"],
 							values = timeDisplay,
-							arg = string.format("groups.%s.time", group),
 						},
 					},
 				},
@@ -451,37 +374,36 @@ local function loadOptions()
 		set = set,
 		handler = Config,
 		args = {
-			enabled = {
+			locked = {
 				order = 0,
 				type = "toggle",
 				name = L["Lock frames"],
 				desc = L["Prevents the frames from being dragged with ALT + Drag."],
-				width = "full",
-				arg = "locked",
 			},
-			example = {
+			showExtras = {
+				order = 0.50,
+				type = "toggle",
+				name = L["Enable extra units"],
+				desc = L["Allows you to configure and show buff bars for target, focus and pet units."],
+			},
+			showExample = {
 				order = 1,
 				type = "toggle",
 				name = L["Show examples"],
 				desc = L["Shows an example buff/debuff for configuration."],
-				width = "full",
-				arg = "showExample",
 			},
-			temps = {
+			showTrack = {
 				order = 2,
+				type = "toggle",
+				name = L["Show tracking"],
+				desc = L["Shows your current tracking as a buff, can change trackings through this as well."],
+			},
+			showTemp = {
+				order = 3,
 				type = "toggle",
 				name = L["Show temporary weapon enchants"],
 				desc = L["Shows your current temporary weapon enchants as a buff."],
 				width = "full",
-				arg = "showTemp",
-			},
-			tracking = {
-				order = 3,
-				type = "toggle",
-				name = L["Show tracking"],
-				desc = L["Shows your current tracking as a buff, can change trackings through this as well."],
-				width = "full",
-				arg = "showTrack",
 			},
 			filters = {
 				order = 4,
@@ -499,14 +421,12 @@ local function loadOptions()
 						type = "toggle",
 						name = L["Auto filter"],
 						desc = L["Automatically enables the physical or caster filters based on talents and class."],
-						arg = "autoFilter",
 						width = "full",
 					},
-					filters = {
+					filtersEnabled = {
 						order = 2,
 						name = L["Filters"],
 						type = "multiselect",
-						arg = "filtersEnabled",
 						disabled = function() return SimpleBB.db.profile.autoFilter end,
 						values = SimpleBB.modules.Filters:GetList(),
 						set = setMulti,
@@ -519,66 +439,49 @@ local function loadOptions()
 				type = "group",
 				inline = true,
 				name = L["Global options"],
+				get = getGroupOption,
+				set = setGroupOption,
 				args = {},
 			},
 		},
 	}
 	
 	-- Setup global options
-	options.args.general.args.global.args = createAnchorOptions("global")
+	options.args.general.args.global.args = Config:CreateAnchorSettings("global", "")
 	
 	local globalOptions = options.args.general.args.global.args
 	globalOptions.desc.name = L["Lets you globally set options for all anchors instead of having to do it one by one.\n\nThe options already chosen in these do not reflect the current anchors settings.\n\nNOTE! Not all options are available, things like anchoring or hiding passive buffs are only available in the anchors own configuration."]
 	globalOptions.anchor.args.to = nil
 	globalOptions.general.args.passive = nil
-	globalOptions.general.args.growUp.width = nil
+	globalOptions.general.args.enabled.width = "full"
 	
+	-- Create anchor configuration
+	local order = 2
+	for key, group in pairs(SimpleBB.db.profile.groups) do
+		options.args[key] = {
+			order = order,
+			type = "group",
+			name = group.name,
+			get = getGroupOption,
+			set = setGroupOption,
+			handler = Config,
+			args = Config:CreateAnchorSettings(key, group.name),
+		}
+	end
 	
-	-- Buff configuration
-	options.args.buffs = {
-		order = 2,
-		type = "group",
-		name = L["Player buffs"],
-		get = get,
-		set = set,
-		handler = Config,
-		args = createAnchorOptions("buffs"),
-	}
-	
-	options.args.buffs.args.tempEnchant = nil
-	options.args.buffs.args.anchor.args.to.values.buffs = nil
-
-	-- Debuff configuration
-	options.args.tempEnchants = {
-		order = 3,
-		type = "group",
-		name = L["Temporary enchants"],
-		get = get,
-		set = set,
-		handler = Config,
-		args = createAnchorOptions("tempEnchants"),
-	}
-	
-	options.args.tempEnchants.args.bar.args.color.args.color = nil
-	options.args.tempEnchants.args.anchor.args.to.values.tempEnchants = nil
-
-	-- Debuff configuration
-	options.args.debuffs = {
-		order = 4,
-		type = "group",
-		name = L["Player debuffs"],
-		get = get,
-		set = set,
-		handler = Config,
-		args = createAnchorOptions("debuffs"),
-	}
-	
-	options.args.debuffs.args.tempEnchant = nil
-	options.args.debuffs.args.anchor.args.to.values.debuffs = nil
-
 	-- DB Profiles
 	options.args.profile = LibStub("AceDBOptions-3.0"):GetOptionsTable(SimpleBB.db)
 	options.args.profile.order = 5
+	
+	-- Lets modules access the configuration
+	Config.options = options
+	
+	-- Module status
+	for _, module in pairs(SimpleBB.modules) do
+		if( module.CreateConfiguration ) then
+			module:CreateConfiguration()
+		end
+	end
 end
 
 -- Slash commands
@@ -597,69 +500,3 @@ SlashCmdList["SIMPLEBB"] = function(msg)
 
 	dialog:Open("SimpleBB")
 end
-
--- Bazaar support
-if( not Bazaar ) then
-	return
-end
-
-function Config:Receive(data, categories)
-	local self = SimpleBB
-	
-	if( categories.general ) then
-		self.db.profile.locked = data.general.locked
-		self.db.profile.showTrack = data.general.showTrack
-		self.db.profile.showTemp = data.general.showTemp
-		self.db.profile.showExample = data.general.showExample
-	end
-	
-	if( categories.buffs ) then
-		self.db.profile.groups.buffs = data.buffs
-	end
-	
-	if( categories.debuffs ) then
-		self.db.profile.groups.debuffs = data.debuffs
-	end
-	
-	if( categories.tempEnchants ) then
-		self.db.profile.groups.tempEnchants = data.tempEnchants
-	end
-	
-	self:Reload()
-end
-
-function Config:Send(categories)
-	local config = {}
-	local self = SimpleBB
-
-	if( categories.general ) then
-		config.general = {}
-		config.general.locked = self.db.profile.locked
-		config.general.showTrack = self.db.profile.showTrack
-		config.general.showTemp = self.db.profile.showTemp
-		config.general.showExample = self.db.profile.showExample
-	end
-
-	if( categories.buffs ) then
-		config.buffs = CopyTable(self.db.profile.groups.buffs)
-	end
-
-	if( categories.debuffs ) then
-		config.debuffs = CopyTable(self.db.profile.groups.debuffs)
-	end
-	
-	if( categories.tempEnchants ) then
-		config.tempEnchants = CopyTable(self.db.profile.groups.tempEnchants)
-	end
-
-	return config
-end
-
-local obj = Bazaar:RegisterAddOn("SimpleBuffBars")
-obj:RegisterCategory("general", "General")
-obj:RegisterCategory("buffs", "Buff anchor")
-obj:RegisterCategory("debuffs", "Debuff anchor")
-obj:RegisterCategory("tempEnchants", "Temporary enchant anchor")
-
-obj:RegisterReceiveHandler(Config, "Receive")
-obj:RegisterSendHandler(Config, "Send")

@@ -1,10 +1,9 @@
 ## Interface: 30100
 ## Title: Simple Buff Bars
 ## Notes: Buff/Debuff bars for the player. Now with less evil.
-## Author: Mayen
-## Version: $Revision: 765 $
+## Author: Mayen/Selari
 ## SavedVariables: SimpleBBDB
-## OptionalDeps: LibStub, Ace3, Bazaar
+## OptionalDeps: LibStub, Ace3
 
 libs\LibStub-1.0\LibStub-1.0.xml
 libs\CallbackHandler-1.0\CallbackHandler-1.0.xml
@@ -24,4 +23,5 @@ localization.zhCN.lua
 
 SimpleBuffBars.lua
 filters.lua
+extras.lua
 config.lua

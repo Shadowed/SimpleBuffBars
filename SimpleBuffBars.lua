@@ -6,11 +6,9 @@ SimpleBB = LibStub("AceAddon-3.0"):NewAddon("SimpleBB", "AceEvent-3.0")
 
 local L = SimpleBBLocals
 
-local SML, MAINHAND_SLOT, OFFHAND_SLOT
-local mainEnabled, offEnabled
-
-local ENCHANT_ANCHOR = "tempEnchants"
+local SML, MAINHAND_SLOT, OFFHAND_SLOT, MAINHAND_BUFF_INDEX, OFFHAND_BUFF_INDEX, TRACKING_INDEX
 local playerUnit = "player"
+local ENCHANT_ANCHOR = "tempEnchants"
 
 local frame = CreateFrame("Frame")
 
@@ -19,13 +17,16 @@ function SimpleBB:OnInitialize()
 		profile = {
 			locked = false,
 			showTrack = true,
-			showTemp = true,
 			showExample = false,
+			showExtras = false,
 			
 			autoFilter = false,
 			filtersEnabled = {["Caster"] = false, ["Physical"] = false},
 			
+			groups = {},
+
 			anchors = {
+				enabled = true,
 				tempColor = {r = 0.5, g = 0.0, b = 0.5},
 				color = {r = 0.30, g = 0.50, b = 1.0},
 				texture = "Minimalist",
@@ -48,15 +49,18 @@ function SimpleBB:OnInitialize()
 				stackFirst = false,
 				position = { x = 600, y = 600 },
 			},
-			groups = {},
 		},
 	}
 
 	-- Setup defaults quickly for groups
 	self.defaults.profile.groups.buffs = CopyTable(self.defaults.profile.anchors)
+	self.defaults.profile.groups.buffs.name = L["Player buffs"]
+	self.defaults.profile.groups.buffs.canFilter = true
 	self.defaults.profile.groups.debuffs = CopyTable(self.defaults.profile.anchors)
+	self.defaults.profile.groups.debuffs.name = L["Player debuffs"]
 	self.defaults.profile.groups.tempEnchants = CopyTable(self.defaults.profile.anchors)
 	self.defaults.profile.groups.tempEnchants.moveTo = "buffs"
+	self.defaults.profile.groups.tempEnchants.name = L["Temporary enchants"]
 	
 	-- Initialize the DB
 	self.db = LibStub:GetLibrary("AceDB-3.0"):New("SimpleBBDB", self.defaults)
@@ -64,34 +68,26 @@ function SimpleBB:OnInitialize()
 	self.db.RegisterCallback(self, "OnProfileCopied", "Reload")
 	self.db.RegisterCallback(self, "OnProfileReset", "Reload")
 
-	self.revision = tonumber(string.match("$Revision: 811 $", "(%d+)") or 1)
+	self.revision = tonumber(string.match("$Revision$", "(%d+)") or 1)
 	
 	-- Annnd so we can grab texture things
 	SML = LibStub:GetLibrary("LibSharedMedia-3.0")
 	SML.RegisterCallback(self, "LibSharedMedia_Registered", "TextureRegistered")
-		
-	-- Player buff/debuff rows
-	self.buffs = {}
-	self.debuffs = {}
-	self.activeTrack = {untilCancelled = true, sortID = "z", type = "tracking"}
-	self.tempEnchants = {[1] = {}, [2] = {}}
 	
+	-- Create the needed group tables
+	self.auras = {}
 	self.groups = {}
-	for name in pairs(self.db.profile.groups) do
-		self.groups[name] = self:CreateGroup(name)
-		self.groups[name].rows = {}
-	end
 	
-	-- Check if we should swap the enchant anchor to something else
-	if( self.db.profile.groups.tempEnchants.moveTo ~= "" ) then
-		ENCHANT_ANCHOR = self.db.profile.groups.tempEnchants.moveTo
-	else
-		ENCHANT_ANCHOR = "tempEnchants"
-	end
-
+	self:UpdateGroups()
+	
 	-- Setup the SlotIDs for Mainhand/Offhands
 	MAINHAND_SLOT = GetInventorySlotInfo("MainHandSlot")
 	OFFHAND_SLOT = GetInventorySlotInfo("SecondaryHandSlot")
+	
+	-- Setup the anchor the enchants go into
+	if( self.db.profile.groups.tempEnchants.moveTo ~= "" ) then
+		ENCHANT_ANCHOR = self.db.profile.groups.tempEnchants.moveTo
+	end
 	
 	-- Kill Blizzards buff frame
 	BuffFrame:UnregisterEvent("UNIT_AURA")
@@ -101,7 +97,7 @@ function SimpleBB:OnInitialize()
 	-- Force a buff check, and update the bar display
 	self:RegisterEvent("PLAYER_ENTERING_WORLD", function(self)
 		self = SimpleBB
-		self:UnregisterEvent("PLAYER_ENTEIRNG_WORLD")
+		self:UnregisterEvent("PLAYER_ENTERING_WORLD")
 		self:RegisterEvent("UNIT_AURA")
 		self:RegisterEvent("UNIT_ENTERED_VEHICLE", "CheckVehicleStatus")
 		self:RegisterEvent("UNIT_EXITED_VEHICLE", "CheckVehicleStatus")
@@ -140,36 +136,14 @@ function SimpleBB:CheckVehicleStatus()
 	self:UNIT_AURA(nil, playerUnit)
 end
 
--- Configuration changed, update bars
-function SimpleBB:Reload()
-	if( not self.db.profile.showTrack ) then
-		self.activeTrack.enabled = nil
-	end
-	
-	if( not self.db.profile.showTemp ) then
-		self.tempEnchants[1].enabled = nil
-		self.tempEnchants[2].enabled = nil
-		frame:Hide()
-	else
-		frame:Show()
-	end
-
-	-- Check if we should swap the enchant anchor to something else
-	if( self.db.profile.groups.tempEnchants.moveTo ~= "" ) then
-		ENCHANT_ANCHOR = self.db.profile.groups.tempEnchants.moveTo
-	else
-		ENCHANT_ANCHOR = "tempEnchants"
-	end
-	
-
-	self:ReloadBars()
-
-	self.modules.Filters:Reload()
-	self:UNIT_AURA(nil, playerUnit)
-	self:UpdateTracking()
-	
-	if( ENCHANT_ANCHOR == "tempEnchants" ) then
-		self:UpdateDisplay("tempEnchants")
+-- Update group tables and such
+function SimpleBB:UpdateGroups()
+	for key in pairs(self.db.profile.groups) do
+		if( not self.groups[key] ) then
+			self.groups[key] = self:CreateGroup(key)
+			self.groups[key].rows = {}
+			self.auras[key] = {}
+		end
 	end
 end
 
@@ -352,7 +326,7 @@ local function OnClick(self, mouseButton)
 	end
 	
 	if( self.type == "buffs" or self.type == "debuffs" ) then
-		-- Can't cancel vehicle buffs
+		-- Can't cancel vehicle buffs, and we don't want them accidentally cancelling there own buff on a vehicle
 		if( playerUnit == "player" ) then
 			CancelUnitBuff("player", self.data.buffIndex, self.data.filter)
 		end
@@ -365,10 +339,8 @@ end
 
 local function OnEnter(self)
 	GameTooltip:SetOwner(self, "ANCHOR_BOTTOMLEFT")
-	if( self.type == "buffs" ) then
-		GameTooltip:SetUnitBuff(playerUnit, self.data.buffIndex)
-	elseif( self.type == "debuffs") then
-		GameTooltip:SetUnitDebuff(playerUnit, self.data.buffIndex)
+	if( self.type == "buffs" or self.type == "debuffs" ) then
+		GameTooltip:SetUnitAura(self.data.unit, self.data.buffIndex, self.data.filter)
 	elseif( self.type == "tempEnchants" ) then
 		GameTooltip:SetInventoryItem("player", self.data.slotID)
 	elseif( self.type == "tracking" ) then
@@ -524,12 +496,7 @@ local function updateRow(row, config, data)
 		row.iconBorder:SetTexture("Interface\\Buttons\\UI-TempEnchant-Border")
 		row.iconBorder:Show()
 	elseif( data.type == "debuffs" or data.buffIndex == -1 ) then
-		if( config.colorByType ) then
-			color = DebuffTypeColor[data.buffType] or DebuffTypeColor.none
-		else
-			color = config.color
-		end
-
+		color = not config.colorByType and config.color or DebuffTypeColor[data.buffType] or DebuffTypeColor.none
 		row.iconBorder:SetTexture("Interface\\Buttons\\UI-Debuff-Overlays")
 		row.iconBorder:SetTexCoord(0.296875, 0.5703125, 0, 0.515625)
 		row.iconBorder:SetVertexColor(color.r, color.g, color.b)
@@ -561,19 +528,22 @@ local function updateRow(row, config, data)
 	row.type = data.type
 	row.data = data
 	row.timeOption = config.time
-	
+		
 	-- Don't use an on update if it has no timer
 	if( not data.untilCancelled ) then
 		row.endTime = data.endTime or 0
 		row.secondsLeft = row.endTime - time
 		row.lastUpdate = time
+		row.barWidth = config.width
 
 		row:SetMinMaxValues(0, data.startSeconds)
 		row:SetScript("OnUpdate", OnUpdate)
-
 		row.timer:SetHeight(config.height)
-		row.text:SetWidth(config.width - 40)
 		row.timer:Show()
+		
+		-- Do an initial timer update, this way we can get a valid timer text width
+		OnUpdate(row)
+		row.text:SetWidth(config.width - row.timer:GetWidth() - 5)
 	else
 		row:SetScript("OnUpdate", nil)
 		row:SetMinMaxValues(0, 1)
@@ -647,55 +617,32 @@ local sorting = {
 
 -- Update display for the passed time
 function SimpleBB:UpdateDisplay(displayID)
-	if( displayID == "tempEnchants" and ENCHANT_ANCHOR ~= displayID ) then
+	local display = self.groups[displayID]
+	local buffs = self.auras[displayID]
+	local config = self.db.profile.groups[displayID]
+
+	-- Anchor disabled
+	if( not self.db.profile.groups[displayID].enabled ) then
+		display:Hide()
+		
+		for _, row in pairs(display.rows) do
+			row:Hide()
+		end
 		return
 	end
-	
-	local display = self.groups[displayID]
-	local buffs = self[displayID]
-	local config = self.db.profile.groups[displayID]
-	
+
 	-- Clear table
 	for i=#(tempRows), 1, -1 do
 		table.remove(tempRows, i)
 	end
 	
-	-- Create buffs
-	for id, data in pairs(self[displayID]) do
+	-- Create auras
+	for id, data in pairs(self.auras[displayID]) do
 		if( data.enabled and ( config.passive and not data.untilCancelled or not config.passive ) ) then
-			data.type = displayID
 			table.insert(tempRows, data)
 		end
 	end
-	
-	-- Merge active tracking into buffs
-	if( displayID == "buffs" and self.activeTrack.enabled ) then
-		table.insert(tempRows, self.activeTrack)
-	end
-	
-	-- Show temp enchants inside there own anchor
-	if( displayID ~= "tempEnchants" and displayID == ENCHANT_ANCHOR ) then
-		for id, data in pairs(self.tempEnchants) do
-			if( data.enabled ) then
-				data.type = "tempEnchants"
-				table.insert(tempRows, data)
-			end
-		end
-	end
 
-	-- Example for configuration
-	-- Really don't like this, it's a quick IF check so it's not TOO bad
-	-- but I'll come up with a better solution without having to do ugly hacks
-	if( self.db.profile.showExample ) then
-		if( displayID == ENCHANT_ANCHOR and displayID ~= "tempEnchants" ) then
-			table.insert(tempRows, self.example.tempEnchants)
-		end
-		
-		if( displayID == "tempEnchants" and ENCHANT_ANCHOR == displayID or displayID ~= "tempEnchants" ) then
-			table.insert(tempRows, self.example[displayID])
-		end
-	end
-		
 	-- Nothing to show
 	if( #(tempRows) == 0 ) then
 		display:Hide()
@@ -747,85 +694,116 @@ function SimpleBB:UpdateDisplay(displayID)
 	end
 end
 
--- Get the start seconds of this buff/debuff/ect
-local buffTimes = {["tempEnchants"] = {}}
-function SimpleBB:GetStartTime(type, name, rank, timeLeft)
-	if( not name ) then
-		return timeLeft
-	end
-	
-	local bID = name .. (rank or "")
-	if( buffTimes[type][bID] ) then
-		if( timeLeft < buffTimes[type][bID] ) then
-			timeLeft = buffTimes[type][bID]
-		else
-			buffTimes[type][bID] = timeLeft
-		end
-	else
-		buffTimes[type][bID] = timeLeft
-	end
-		
-	return timeLeft
-end
-
 -- Update auras
-function SimpleBB:UpdateAuras(type, filter)
-	for _, data in pairs(self[type]) do data.enabled = nil; data.untilCancelled = nil; end
+function SimpleBB:UpdateAuras(group, unit, filterType, filter)
+	for _, data in pairs(self.auras[group]) do if( not data.ignore ) then data.enabled = nil data.untilCancelled = nil data.type = nil end end
 		
 	local time = GetTime()
-	local buffID = 0
+	local buffID = 1
+	-- We reserve the first three indexes for special buffs
+	local tableID = 4
+	
 	while( true ) do
-		buffID = buffID + 1
-
-		local name, rank, texture, count, debuffType, duration, endTime, isMine, isStealable = UnitAura(playerUnit, buffID, filter)
+		local name, rank, texture, count, debuffType, duration, endTime, isMine, isStealable = UnitAura(unit, buffID, filter)
 		if( not name ) then break end
 		
 		-- Check if it's filtered
-		if( not SimpleBB.modules.Filters:IsFiltered(name) ) then
-			if( not self[type][buffID] ) then
-				self[type][buffID] = {}
+		if( not self.db.profile.groups[group].canFilter or not self.modules.Filters:IsFiltered(name) ) then
+			local buff = self.auras[group][tableID]
+			if( not buff ) then
+				self.auras[group][tableID] = {}
+				buff = self.auras[group][tableID]
 			end
-
-			local buff = self[type][buffID]
+			
 			buff.enabled = true
-			buff.type = type
+			buff.type = filterType
+			buff.unit = unit
 			buff.buffIndex = buffID
 			buff.untilCancelled = duration == 0 and endTime == 0
 			buff.icon = texture
 			buff.buffType = debuffType
 			buff.stack = count or 0
-			--buff.startSeconds = duration or endTime and self:GetStartTime(type, name, rank, endTime - time) or 0
 			buff.filter = filter
 			buff.startSeconds = duration
 			buff.endTime = endTime
 			buff.name = name
 			buff.rank = tonumber(string.match(rank, "(%d+)"))
+
+			-- Grab the next table index now
+			tableID = tableID + 1
 		end
+
+		buffID = buffID + 1
 	end
 end
 
+-- Update player buff/debuffs
+function SimpleBB:UNIT_AURA(event, unit)
+	if( unit ~= playerUnit ) then
+		return
+	end
+
+	self:UpdateAuras("buffs", unit, "buffs", "HELPFUL|PASSIVE")
+	self:UpdateDisplay("buffs")
+
+	self:UpdateAuras("debuffs", unit, "debuffs", "HARMFUL")
+	self:UpdateDisplay("debuffs")
+end
+
+-- Find an unused index that we can hijack
+function SimpleBB:FindAvailableIndex(key, type)
+	local foundIndex
+	local lastIndex = 0
+	for index, buff in pairs(self.auras[key]) do
+		if( buff.ignore ) then
+			lastIndex = index
+		end
+		
+		if( not buff.enabled and buff.type == type ) then
+			foundIndex = index
+			break
+		end
+	end
+	
+	-- None was created yet, so will make our own
+	if( not foundIndex ) then
+		lastIndex = lastIndex + 1
+		self.auras[key][lastIndex] = {}
+		
+		return lastIndex
+	end
+	
+	-- Return a created one
+	return foundIndex
+end
+
+-- Update the players current tracked thing
 function SimpleBB:UpdateTracking()
 	if( not self.db.profile.showTrack ) then
 		return
 	end
 	
-	self.activeTrack.enabled = nil
+	-- This prevents us from needing to search for our table every single time
+	TRACKING_INDEX = TRACKING_INDEX or self:FindAvailableIndex("buffs", "tracking")
+			
+	-- Reset it to default in case we don't find anything
+	local buff = self.auras.buffs[TRACKING_INDEX]
+	buff.enabled = true
+	buff.ignore = true
+	buff.type = "tracking"
+	buff.name = L["None"]
+	buff.icon = GetTrackingTexture()
+	buff.trackingType = nil
+	buff.untilCancelled = true
 	
+	-- Search for active track
 	for i=1, GetNumTrackingTypes() do
-		local name, texture, active, type = GetTrackingInfo(i)
+		local name, icon, active, type = GetTrackingInfo(i)
 		if( active ) then
-			self.activeTrack.name = name
-			self.activeTrack.icon = texture
-			self.activeTrack.trackingType = type
-			self.activeTrack.enabled = true
+			buff.name = name
+			buff.icon = icon
+			buff.trackingType = type
 		end
-	end
-	
-	if( not self.activeTrack.enabled ) then
-		self.activeTrack.name = L["None"]
-		self.activeTrack.icon = GetTrackingTexture()
-		self.activeTrack.trackingType = nil
-		self.activeTrack.enabled = true
 	end
 	
 	self:UpdateDisplay("buffs")
@@ -857,11 +835,11 @@ function SimpleBB:ParseName(slotID)
 end
 
 -- Update temp weapon enchants
-function SimpleBB:UpdateTempEnchant(id, slotID, hasEnchant, timeLeft, charges)
-	local tempEnchant = self.tempEnchants[id]
+local tempStartTime = {}
+function SimpleBB:UpdateTempEnchant(buff, slotID, hasEnchant, timeLeft, charges)
+	-- No enchant
 	if( not hasEnchant ) then
-		tempEnchant.enabled = nil
-		tempEnchant.untilCancelled = nil
+		buff.enabled = false
 		return
 	end
 	
@@ -870,35 +848,30 @@ function SimpleBB:UpdateTempEnchant(id, slotID, hasEnchant, timeLeft, charges)
 	-- When the players entering/leaving the world, we get a bad return on the name/rank
 	-- So we only update it if we found one, and thus fixes it!
 	if( name ) then
-		tempEnchant.name = name
-		tempEnchant.rank = rank
+		buff.name = name
+		buff.rank = rank
 	end
 
-	local timeLeft = timeLeft / 1000
-
-	tempEnchant.enabled = true
-	tempEnchant.type = "tempEnchants"
-	tempEnchant.slotID = slotID
-
-	tempEnchant.timeLeft = timeLeft
-	tempEnchant.endTime = GetTime() + timeLeft
-	tempEnchant.startSeconds = self:GetStartTime("tempEnchants", name, rank, timeLeft)
-
-	tempEnchant.icon = GetInventoryItemTexture("player", slotID)
-	tempEnchant.stack = charges or 0
-end
-
--- Update player buff/debuffs
-function SimpleBB:UNIT_AURA(event, unit)
-	if( unit ~= playerUnit ) then
-		return
-	end
+	timeLeft = timeLeft / 1000
 	
-	self:UpdateAuras("buffs", "HELPFUL|PASSIVE")
-	self:UpdateAuras("debuffs", "HARMFUL")
+	local enchantID = name .. (rank or "")
 	
-	self:UpdateDisplay("buffs")
-	self:UpdateDisplay("debuffs")
+	-- Record the highest start time for the temp enchant
+	if( not tempStartTime[enchantID] or tempStartTime[enchantID] < timeLeft ) then
+		tempStartTime[enchantID] = timeLeft
+	end	
+	
+	buff.enabled = true
+	buff.ignore = true
+	buff.type = "tempEnchants"
+	buff.slotID = slotID
+
+	buff.timeLeft = timeLeft
+	buff.endTime = GetTime() + timeLeft
+	buff.startSeconds = tempStartTime[enchantID]
+
+	buff.icon = GetInventoryItemTexture("player", slotID)
+	buff.stack = charges or 0
 end
 
 -- Update temp weapons
@@ -908,17 +881,15 @@ frame:SetScript("OnUpdate", function(self, elapsed)
 	
 	if( timeElapsed >= 1 ) then
 		timeElapsed = 0
+		self = SimpleBB
 
 		local hasMain, mainTimeLeft, mainCharges, hasOff, offTimeLeft, offCharges = GetWeaponEnchantInfo()
+		MAINHAND_BUFF_INDEX = MAINHAND_BUFF_INDEX or self:FindAvailableIndex(ENCHANT_ANCHOR, "tempEnchants")
+		self:UpdateTempEnchant(self.auras[ENCHANT_ANCHOR][MAINHAND_BUFF_INDEX], MAINHAND_SLOT, hasMain, mainTimeLeft, mainCharges)
 		
-		SimpleBB:UpdateTempEnchant(1, MAINHAND_SLOT, hasMain, mainTimeLeft, mainCharges)
-		if( SimpleBB.tempEnchants[1].enabled ) then
-			SimpleBB:UpdateTempEnchant(2, OFFHAND_SLOT, hasOff, offTimeLeft, offCharges)
-		else
-			SimpleBB.tempEnchants[2].enabled = nil
-			SimpleBB:UpdateTempEnchant(1, OFFHAND_SLOT, hasOff, offTimeLeft, offCharges)
-		end
-
+		OFFHAND_BUFF_INDEX= OFFHAND_BUFF_INDEX or self:FindAvailableIndex(ENCHANT_ANCHOR, "tempEnchants")
+		self:UpdateTempEnchant(self.auras[ENCHANT_ANCHOR][OFFHAND_BUFF_INDEX], OFFHAND_SLOT, hasOff, offTimeLeft, offCharges)
+		
 		-- Update if needed
 		SimpleBB:UpdateDisplay(ENCHANT_ANCHOR)
 	end
@@ -939,3 +910,80 @@ end
 function SimpleBB:Print(msg)
 	DEFAULT_CHAT_FRAME:AddMessage("|cff33ff99Simple Buff Bars|r: " .. msg)
 end
+
+-- Configuration changed, update bars
+local examplesShown
+function SimpleBB:Reload()
+	-- Example buffs
+	if( self.db.profile.showExample and not examplesShown ) then
+		examplesShown = true
+		
+		for key, group in pairs(self.db.profile.groups) do
+			if( group.enabled ) then
+				local index = self:FindAvailableIndex(key, "example")
+				local buff = self.auras[key][index]
+				
+				buff.enabled = true
+				buff.ignore = true
+				buff.type = "example"
+				buff.name = group.name
+				buff.icon = "Interface\\Icons\\Spell_Nature_RemoveCurse"
+				buff.stack = 3
+				buff.rank = 2
+				buff.timeLeft = 635
+				buff.startSeconds = 700
+				buff.endTime = GetTime() + buff.timeLeft
+			end
+		end
+	-- Disable example buffs
+	elseif( not self.db.profile.showExample and examplesShown ) then
+		examplesShown = nil
+		
+		for key, group in pairs(self.db.profile.groups) do
+			for _, buff in pairs(self.auras[key]) do
+				if( buff.type == "example" ) then
+					buff.enabled = false
+				end
+			end
+		end
+	end
+
+	-- Hide the tracking info
+	if( not self.db.profile.showTrack and TRACKING_INDEX ) then
+		self.auras.buffs[TRACKING_INDEX].enabled = false
+	end
+	
+	-- Update tracking
+	if( not self.db.profile.showTemp ) then
+		if( MAINHAND_BUFF_INDEX ) then
+			self.auras[ENCHANT_ANCHOR][MAINHAND_BUFF_INDEX].enabled = false
+		end
+		
+		if( OFFHAND_BUFF_INDEX ) then
+			self.auras[ENCHANT_ANCHOR][OFFHAND_BUFF_INDEX].enabled = false
+		end
+		frame:Hide()
+	else
+		frame:Show()
+	end
+	
+	-- Force it to find the temp enchant indexes again in case it moved anchors
+	MAINHAND_BUFF_INDEX = nil
+	OFFHAND_BUFF_INDEX = nil
+	
+	-- Check if we should swap the enchant anchor to something else
+	if( self.db.profile.groups.tempEnchants.moveTo ~= "" ) then
+		ENCHANT_ANCHOR = self.db.profile.groups.tempEnchants.moveTo
+	else
+		ENCHANT_ANCHOR = "tempEnchants"
+	end
+	
+	-- Full bar update
+	self:ReloadBars()
+	self.modules.Filters:Reload()
+	self.modules.Extras:Reload()
+	self:UNIT_AURA(nil, playerUnit)
+	self:UpdateTracking()
+	self:UpdateDisplay("tempEnchants")
+end
+

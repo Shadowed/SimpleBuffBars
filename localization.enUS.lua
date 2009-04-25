@@ -1,15 +1,14 @@
 SimpleBBLocals = {
 	["None"] = "None",
-
-	-- Slash command
-	["Simple Buff Bars slash commands"] = "Simple Buff Bars slash commands",
-	[" - ui - Opens the configuration."] = " - ui - Opens the configuration.",
 	
 	-- GUI
 	["General"] = "General",
-	
+		
 	["Show temporary weapon enchants"] = "Show temporary weapon enchants",
 	["Shows your current temporary weapon enchants as a buff."] = "Shows your current temporary weapon enchants as a buff.",
+	
+	["Enable extra units"] = "Enable extra units",
+	["Allows you to configure and show buff bars for target, focus and pet units."] = "Allows you to configure and show buff bars for target, focus and pet units.",
 	
 	["Show examples"] = "Show examples",
 	["Shows an example buff/debuff for configuration."] = "Shows an example buff/debuff for configuration.",
@@ -23,9 +22,15 @@ SimpleBBLocals = {
 	["Lock frames"] = "Lock frames",
 	["Prevents the frames from being dragged with ALT + Drag."] = "Prevents the frames from being dragged with ALT + Drag.",
 	
+	["Enable group"] = "Enable group",
+	["Enable showing this group, if it's disabled then no timers will appear inside."] = "Enable showing this group, if it's disabled then no timers will appear inside.",
+	
 	["Player buffs"] = "Player buffs",
 	["Player debuffs"] = "Player debuffs",
 	["Temporary enchants"] = "Temporary enchants",
+	["Pet"] = "Pet",
+	["Target"] = "Target",
+	["Focus"] = "Focus",
 	
 	["Anchor configuration for %ss."] = "Anchor configuration for %ss.",
 
@@ -69,6 +74,9 @@ SimpleBBLocals = {
 	
 	["Row spacing"] = "Row spacing",
 	["How far apart each timer bar should be."] = "How far apart each timer bar should be.",
+	
+	["%s anchor configuration."] = "%s anchor configuration.",
+	["Hide"] = "Hide",
 	
 	["Anchor"] = "Anchor",
 	["Buffs"] = "Buffs",

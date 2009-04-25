@@ -98,7 +98,7 @@ function Filters:CheckAutoLoad()
 	-- so will only filter for Holy Paladins
 	elseif( class == "PALADIN" ) then
 		-- More than 30 points in Holy
-		if( select(1, GetTalentTabInfo(1)) >= 31 ) then
+		if( select(3, GetTalentTabInfo(1)) >= 31 ) then
 			self:Load("Caster")
 		end
 	end

@@ -25,6 +25,8 @@ SimpleBBLocals = {
 	["Enable group"] = "Enable group",
 	["Enable showing this group, if it's disabled then no timers will appear inside."] = "Enable showing this group, if it's disabled then no timers will appear inside.",
 	
+	["Hide buffs you didn't cast"] = "Hide buffs you didn't cast",
+	
 	["Player buffs"] = "Player buffs",
 	["Player debuffs"] = "Player debuffs",
 	["Temporary enchants"] = "Temporary enchants",

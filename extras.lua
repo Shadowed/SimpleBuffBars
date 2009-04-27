@@ -16,7 +16,7 @@ function Extras:UNIT_AURA(event, unit)
 		return
 	end
 	
-	SimpleBB:UpdateAuras(unit .. "buffs", unit, "buffs", "HELPFUL|PASSIVE")
+	SimpleBB:UpdateAuras(unit .. "buffs", unit, "buffs", "HELPFUL")
 	SimpleBB:UpdateDisplay(unit .. "buffs")
 
 	SimpleBB:UpdateAuras(unit .. "debuffs", unit, "debuffs", "HARMFUL")
@@ -58,6 +58,11 @@ function Extras:Enable()
 	-- Create configuration
 	self:CreateConfiguration()
 	
+	-- Update auras
+	for unit in pairs(units) do
+		self:UNIT_AURA(nil, unit)
+	end
+	
 	-- Register events
 	self:RegisterEvent("UNIT_AURA")
 	self:RegisterEvent("PLAYER_TARGET_CHANGED")
@@ -89,6 +94,13 @@ end
 
 function Extras:Reload()
 	if( SimpleBB.db.profile.showExtras ) then
+		if( self.enabled ) then
+			-- Update auras
+			for unit in pairs(units) do
+				self:UNIT_AURA(nil, unit)
+			end
+		end
+
 		self:Enable()
 	else
 		self:Disable()

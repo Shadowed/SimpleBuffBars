@@ -142,13 +142,13 @@ function Config:CreateAnchorSettings(group, name)
 			name = L["General"],
 			args = {
 				enabled = {
-					order = 0.25,
+					order = 0,
 					type = "toggle",
 					name = L["Enable group"],
 					desc = L["Enable showing this group, if it's disabled then no timers will appear inside."],
 				},
 				growUp = {
-					order = 0.75,
+					order = 0.50,
 					type = "toggle",
 					name = L["Grow display up"],
 					desc = L["Instead of adding everything from top to bottom, timers will be shown from bottom to top."],
@@ -163,6 +163,13 @@ function Config:CreateAnchorSettings(group, name)
 					order = 2,
 					type = "toggle",
 					name = L["Hide passive buffs"],
+				},
+				playerOnly = {
+					order = 3,
+					type = "toggle",
+					name = L["Hide buffs you didn't cast"],
+					hidden = function(info) if( info[1] ~= "buffs" and info[1] ~= "debuffs" and info[1] ~= "tempEnchants" and info[2] ~= "global" ) then return false else return true end end,
+					width = "full",
 				},
 				sep = {
 					order = 3,

@@ -638,7 +638,7 @@ function SimpleBB:UpdateDisplay(displayID)
 	
 	-- Create auras
 	for id, data in pairs(self.auras[displayID]) do
-		if( data.enabled and ( config.passive and not data.untilCancelled or not config.passive ) ) then
+		if( data.enabled ) then
 			table.insert(tempRows, data)
 		end
 	end
@@ -698,18 +698,18 @@ end
 function SimpleBB:UpdateAuras(group, unit, filterType, filter)
 	for _, data in pairs(self.auras[group]) do if( not data.ignore ) then data.enabled = nil data.untilCancelled = nil data.type = nil end end
 		
+	local config = self.db.profile.groups[group]
 	local time = GetTime()
 	local buffID = 1
 	-- We reserve the first three indexes for special buffs
 	local tableID = 4
 	
 	while( true ) do
-		local name, rank, texture, count, debuffType, duration, endTime, isMine, isStealable = UnitAura(unit, buffID, filter)
+		local name, rank, texture, count, debuffType, duration, endTime, caster, isStealable = UnitAura(unit, buffID, filter)
 		if( not name ) then break end
 		
 		-- Check if it's filtered
-		if( not self.db.profile.groups[group].canFilter or not self.modules.Filters:IsFiltered(name) ) then
-			local buff = self.auras[group][tableID]
+		if( ( not config.playerOnly or config.playerOnly and caster == "player" ) and ( not config.passive or config.passive and duration > 0 and endTime > 0 ) and ( not config.canFilter or not self.modules.Filters:IsFiltered(name) ) ) then			local buff = self.auras[group][tableID]
 			if( not buff ) then
 				self.auras[group][tableID] = {}
 				buff = self.auras[group][tableID]
@@ -743,7 +743,7 @@ function SimpleBB:UNIT_AURA(event, unit)
 		return
 	end
 
-	self:UpdateAuras("buffs", unit, "buffs", "HELPFUL|PASSIVE")
+	self:UpdateAuras("buffs", unit, "buffs", "HELPFUL")
 	self:UpdateDisplay("buffs")
 
 	self:UpdateAuras("debuffs", unit, "debuffs", "HARMFUL")

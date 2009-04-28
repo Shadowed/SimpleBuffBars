@@ -321,15 +321,12 @@ local function OnDragStop(self)
 end
 
 local function OnClick(self, mouseButton)
-	if( mouseButton ~= "RightButton" ) then
+	if( mouseButton ~= "RightButton" or self.data.unit ~= "player" ) then
 		return
 	end
 	
 	if( self.type == "buffs" or self.type == "debuffs" ) then
-		-- Can't cancel vehicle buffs, and we don't want them accidentally cancelling there own buff on a vehicle
-		if( playerUnit == "player" ) then
-			CancelUnitBuff("player", self.data.buffIndex, self.data.filter)
-		end
+		CancelUnitBuff("player", self.data.buffIndex, self.data.filter)
 	elseif( self.type == "tempEnchants" ) then
 		CancelItemTempEnchantment(self.data.slotID - 15)
 	elseif( self.type == "tracking" ) then

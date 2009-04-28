@@ -21,6 +21,7 @@ localization.deDE.lua
 localization.frFR.lua
 localization.zhCN.lua
 localization.korKR.lua
+localization.zhTW.lua
 
 SimpleBuffBars.lua
 filters.lua

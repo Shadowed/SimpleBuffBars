@@ -208,7 +208,7 @@ function Config:CreateAnchorSettings(group, name)
 					order = 8,
 					type = "select",
 					name = L["Icon position"],
-					values = {["LEFT"] = L["Left"], ["RIGHT"] = L["Right"]},
+					values = {["HIDE"] = L["Hide"], ["LEFT"] = L["Left"], ["RIGHT"] = L["Right"]},
 				},
 			}
 		},

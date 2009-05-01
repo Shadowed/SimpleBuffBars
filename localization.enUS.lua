@@ -51,6 +51,7 @@ SimpleBBLocals = {
 	["Icon position"] = "Icon position",
 	["Right"] = "Right",
 	["Left"] = "Left",
+	["Hide"] = "Hide",
 	
 	["Bars"] = "Bars",
 	["Height"] = "Height",

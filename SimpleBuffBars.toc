@@ -17,8 +17,6 @@ libs\AceGUI-3.0-SharedMediaWidgets\widget.xml
 libs\AceConfig-3.0\AceConfig-3.0.xml
 
 localization.enUS.lua
-localization.deDE.lua
-localization.frFR.lua
 localization.zhCN.lua
 localization.korKR.lua
 localization.zhTW.lua

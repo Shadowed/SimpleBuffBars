@@ -28,6 +28,8 @@ SimpleBBLocals = setmetatable({
 	["Enable group"] = "사용하기",
 	["Enable showing this group, if it's disabled then no timers will appear inside."] = "Enable showing this group, if it's disabled then no timers will appear inside.",
 	
+	["Hide buffs you didn't cast"] = "본인이 한것 외엔 숨기기",
+
 	["Player buffs"] = "플레이어 버프",
 	["Player debuffs"] = "플레이어 디버프",
 	["Temporary enchants"] = "무기강화",
@@ -54,8 +56,8 @@ SimpleBBLocals = setmetatable({
 	["Left"] = "왼쪽",
 	
 	["Bars"] = "바",
-	["Height"] = "너비",
-	["Width"] = "높이",
+	["Height"] = "높이",
+	["Width"] = "너비",
 	["Texture"] = "텍스쳐",
 	["Colors"] = "색상",
 	
@@ -68,7 +70,7 @@ SimpleBBLocals = setmetatable({
 	["Temporary enchant colors"] = "무기강화 색상",
 	["Bar and background color for temporary weapon enchants, only used if color by type is enabled."] = "Bar and background color for temporary weapon enchants, only used if color by type is enabled.",
 	
-	["Fill timeless buffs"] = "버프 빈칸채우기",
+	["Fill timeless buffs"] = "지속버프에 빈칸 채우기",
 	["Buffs without a duration will have the status bar shown as filled in, instead of empty."] = "Buffs without a duration will have the status bar shown as filled in, instead of empty.",
 	
 	["Display alpha"] = "투명도",
@@ -81,7 +83,7 @@ SimpleBBLocals = setmetatable({
 	["Row spacing"] = "행 간격",
 	["How far apart each timer bar should be."] = "How far apart each timer bar should be.",
 	
-	["%s anchor configuration."] = "%s anchor configuration.",
+	["%s anchor configuration."] = "%s바 환경설정",
 	["Hide"] = "숨김",
 	
 	["Anchor"] = "앵커",

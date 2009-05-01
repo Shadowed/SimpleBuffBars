@@ -224,7 +224,6 @@ function SimpleBB:CreateGroup(name)
 	
 	-- This is wrapped around all the bars so we can have things "linked" together
 	frame.container = CreateFrame("Frame", nil, frame)
-	
 	return frame
 end
 
@@ -238,9 +237,14 @@ local function updateBar(id, row, display, config)
 	
 	row.bg:SetStatusBarTexture(texture)
 	
-	row.icon:SetPoint("TOPLEFT", row, "TOP" .. config.iconPosition, display.iconPad, 0)
-	row.icon:SetHeight(config.height)
-	row.icon:SetWidth(config.height)
+	if( config.iconPosition == "LEFT" or config.iconPosition == "RIGHT" ) then
+		row.icon:SetPoint("TOPLEFT", row, "TOP" .. config.iconPosition, display.iconPad, 0)
+		row.icon:SetHeight(config.height)
+		row.icon:SetWidth(config.height)
+		row.icon:Show()
+	else
+		row.icon:Hide()
+	end
 	
 	local font = SML:Fetch(SML.MediaType.FONT, config.font)
 	row.timer:SetFont(font, config.fontSize)
@@ -325,7 +329,7 @@ local function OnClick(self, mouseButton)
 		return
 	end
 	
-	if( self.type == "buffs" or self.type == "debuffs" ) then
+	if( self.type == "aura" ) then
 		CancelUnitBuff("player", self.data.buffIndex, self.data.filter)
 	elseif( self.type == "tempEnchants" ) then
 		CancelItemTempEnchantment(self.data.slotID - 15)
@@ -336,7 +340,7 @@ end
 
 local function OnEnter(self)
 	GameTooltip:SetOwner(self, "ANCHOR_BOTTOMLEFT")
-	if( self.type == "buffs" or self.type == "debuffs" ) then
+	if( self.type == "aura" ) then
 		GameTooltip:SetUnitAura(self.data.unit, self.data.buffIndex, self.data.filter)
 	elseif( self.type == "tempEnchants" ) then
 		GameTooltip:SetInventoryItem("player", self.data.slotID)
@@ -684,15 +688,18 @@ function SimpleBB:UpdateDisplay(displayID)
 		if( config.iconPosition == "LEFT" ) then
 			display.container:SetPoint("TOPLEFT", display.rows[firstRow].icon)
 			display.container:SetPoint("BOTTOMRIGHT", display.rows[lastRow])
-		else
-			display.container:SetPoint("TOPLEFT", display.rows[1])
+		elseif( config.iconPosition == "RIGHT" ) then
+			display.container:SetPoint("TOPLEFT", display.rows[firstRow])
 			display.container:SetPoint("BOTTOMRIGHT", display.rows[lastRow].icon)
+		else
+			display.container:SetPoint("TOPLEFT", display.rows[firstRow])
+			display.container:SetPoint("BOTTOMRIGHT", display.rows[lastRow])
 		end
 	end
 end
 
 -- Update auras
-function SimpleBB:UpdateAuras(group, unit, filterType, filter)
+function SimpleBB:UpdateAuras(group, unit, filter)
 	for _, data in pairs(self.auras[group]) do if( not data.ignore ) then data.enabled = nil data.untilCancelled = nil data.type = nil end end
 		
 	local config = self.db.profile.groups[group]
@@ -713,7 +720,7 @@ function SimpleBB:UpdateAuras(group, unit, filterType, filter)
 			end
 			
 			buff.enabled = true
-			buff.type = filterType
+			buff.type = "aura"
 			buff.unit = unit
 			buff.buffIndex = buffID
 			buff.untilCancelled = duration == 0 and endTime == 0
@@ -739,11 +746,11 @@ function SimpleBB:UNIT_AURA(event, unit)
 	if( unit ~= playerUnit ) then
 		return
 	end
-
-	self:UpdateAuras("buffs", unit, "buffs", "HELPFUL")
+	
+	self:UpdateAuras("buffs", unit, "HELPFUL")
 	self:UpdateDisplay("buffs")
 
-	self:UpdateAuras("debuffs", unit, "debuffs", "HARMFUL")
+	self:UpdateAuras("debuffs", unit, "HARMFUL")
 	self:UpdateDisplay("debuffs")
 end
 
@@ -788,6 +795,7 @@ function SimpleBB:UpdateTracking()
 	buff.enabled = true
 	buff.ignore = true
 	buff.type = "tracking"
+	buff.unit = "player"
 	buff.name = L["None"]
 	buff.icon = GetTrackingTexture()
 	buff.trackingType = nil
@@ -856,6 +864,7 @@ function SimpleBB:UpdateTempEnchant(buff, slotID, hasEnchant, timeLeft, charges)
 	buff.ignore = true
 	buff.type = "tempEnchants"
 	buff.slotID = slotID
+	buff.unit = "player"
 
 	buff.timeLeft = timeLeft
 	buff.endTime = GetTime() + timeLeft

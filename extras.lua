@@ -16,10 +16,10 @@ function Extras:UNIT_AURA(event, unit)
 		return
 	end
 	
-	SimpleBB:UpdateAuras(unit .. "buffs", unit, "buffs", "HELPFUL")
+	SimpleBB:UpdateAuras(unit .. "buffs", unit, "HELPFUL")
 	SimpleBB:UpdateDisplay(unit .. "buffs")
 
-	SimpleBB:UpdateAuras(unit .. "debuffs", unit, "debuffs", "HARMFUL")
+	SimpleBB:UpdateAuras(unit .. "debuffs", unit, "HARMFUL")
 	SimpleBB:UpdateDisplay(unit .. "debuffs")
 end
 

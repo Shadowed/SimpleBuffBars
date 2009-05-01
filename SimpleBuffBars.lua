@@ -72,7 +72,7 @@ function SimpleBB:OnInitialize()
 	
 	-- Annnd so we can grab texture things
 	SML = LibStub:GetLibrary("LibSharedMedia-3.0")
-	SML.RegisterCallback(self, "LibSharedMedia_Registered", "TextureRegistered")
+	SML.RegisterCallback(self, "LibSharedMedia_Registered", "ResourceRegistered")
 	
 	-- Create the needed group tables
 	self.auras = {}
@@ -247,6 +247,10 @@ local function updateBar(id, row, display, config)
 	end
 	
 	local font = SML:Fetch(SML.MediaType.FONT, config.font)
+	if( not font ) then
+		font = SML:Fetch(SML.MediaType.FONt, "Friz Quadrata TT") or (GameFontNormal:GetFont())
+	end
+	
 	row.timer:SetFont(font, config.fontSize)
 	row.timer:SetShadowOffset(1, -1)
 	row.timer:SetShadowColor(0, 0, 0, 1)
@@ -905,7 +909,7 @@ frame:SetScript("OnUpdate", function(self, elapsed)
 end)
 
 -- If we want a texture that was registered later after we loaded, reload the bars so it uses the correct one
-function SimpleBB:TextureRegistered(event, mediaType, key)
+function SimpleBB:ResourceRegistered(event, mediaType, key)
 	if( mediaType == SML.MediaType.STATUSBAR or mediaType == SML.MediaType.FONT ) then
 		for name, config in pairs(self.db.profile.groups) do
 			if( config.texture == key or config.font == key ) then

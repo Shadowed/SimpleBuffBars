@@ -496,7 +496,7 @@ local function updateRow(row, config, data)
 		row.iconBorder:SetTexCoord(0, 0, 0, 0)
 		row.iconBorder:SetTexture("Interface\\Buttons\\UI-TempEnchant-Border")
 		row.iconBorder:Show()
-	elseif( data.type == "debuffs" or data.buffIndex == -1 ) then
+	elseif( data.filter == "HARMFUL" ) then
 		color = not config.colorByType and config.color or DebuffTypeColor[data.buffType] or DebuffTypeColor.none
 		row.iconBorder:SetTexture("Interface\\Buttons\\UI-Debuff-Overlays")
 		row.iconBorder:SetTexCoord(0.296875, 0.5703125, 0, 0.515625)

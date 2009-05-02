@@ -831,6 +831,8 @@ function SimpleBB:ParseName(slotID)
 		local text = getglobal("SimpleBBTooltipTextLeft" .. i):GetText()
 		local name = string.match(text, "^(.+) %(%d+[^%)]+%)$")
 		if( name ) then
+			name = string.gsub(name, " %(%d+[^%)]+%)", "")
+			
 			local tName, rank = string.match(name, "^(.*)(%w*)$")
 			if( tName and rank ) then
 				name = tName

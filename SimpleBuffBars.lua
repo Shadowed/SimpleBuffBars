@@ -411,7 +411,7 @@ local formatTime = {
 		elseif( minutes > 0 ) then
 			text:SetFormattedText("%dm", minutes)
 		else
-			text:SetFormattedText("%02ds", timeLeft > 0 and timeLeft or 0)
+			text:SetFormattedText("%ds", timeLeft > 0 and timeLeft or 0)
 		end
 	end,
 }
@@ -463,16 +463,17 @@ local function updateRow(row, config, data)
 	row.icon:Show()
 	
 	local color
-	if( data.type == "tempEnchants" ) then
-		color = config.tempColor
-		row.iconBorder:SetTexCoord(0, 0, 0, 0)
-		row.iconBorder:SetTexture("Interface\\Buttons\\UI-TempEnchant-Border")
-		row.iconBorder:Show()
-	elseif( data.filter == "HARMFUL" ) then
+	if( data.filter == "HARMFUL" ) then
 		color = not config.colorByType and config.color or DebuffTypeColor[data.buffType] or DebuffTypeColor.none
+		
 		row.iconBorder:SetTexture("Interface\\Buttons\\UI-Debuff-Overlays")
 		row.iconBorder:SetTexCoord(0.296875, 0.5703125, 0, 0.515625)
 		row.iconBorder:SetVertexColor(color.r, color.g, color.b)
+		row.iconBorder:Show()
+	elseif( data.type == "tempEnchants" ) then
+		color = config.tempColor
+		row.iconBorder:SetTexCoord(0, 0, 0, 0)
+		row.iconBorder:SetTexture("Interface\\Buttons\\UI-TempEnchant-Border")
 		row.iconBorder:Show()
 	elseif( data.type == "tracking" and data.trackingType ~= "spell" ) then
 		color = buffTypes.buff

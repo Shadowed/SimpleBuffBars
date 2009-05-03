@@ -294,7 +294,7 @@ function Config:CreateAnchorSettings(group, name)
 					inline = true,
 					name = L["Colors"],
 					args = {
-						colorbyType = {
+						colorByType = {
 							order = 1,
 							type = "toggle",
 							name = L["Color by type"],

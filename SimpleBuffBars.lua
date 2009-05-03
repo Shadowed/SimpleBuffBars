@@ -94,45 +94,13 @@ function SimpleBB:OnInitialize()
 	TemporaryEnchantFrame:Hide()
 	BuffFrame:Hide()
 	
-	-- Force a buff check, and update the bar display
-	self:RegisterEvent("PLAYER_ENTERING_WORLD", function(self)
-		self = SimpleBB
-		self:UnregisterEvent("PLAYER_ENTERING_WORLD")
-		self:RegisterEvent("UNIT_AURA")
-		self:RegisterEvent("UNIT_ENTERED_VEHICLE", "CheckVehicleStatus")
-		self:RegisterEvent("UNIT_EXITED_VEHICLE", "CheckVehicleStatus")
-		self:RegisterEvent("MINIMAP_UPDATE_TRACKING", "UpdateTracking")
-		
-		-- Fixes Track Humanoids not being changed correctly
-		if( select(2, UnitClass("player")) == "DRUID" ) then
-			self:RegisterEvent("UPDATE_SHAPESHIFT_FORM", "UpdateTracking")
-		end
-		
-		-- Update visuals
-		self:ReloadBars()
-		
-		-- Show temp buffs? Show our timer frame then
-		if( self.db.profile.showTemp ) then
-			frame:Show()
-		else
-			frame:Hide()
-		end
-		
-		-- Update buffs
-		self:CheckVehicleStatus()
-		self:UNIT_AURA(nil, playerUnit)
-		self:UpdateTracking()
-	end)
+	-- Delay updating buffs until PEW, this way scaling and such is set correctly
+	self:RegisterEvent("PLAYER_ENTERING_WORLD")
 end
 
 -- Show the vehicle buffs if the player is in one
 function SimpleBB:CheckVehicleStatus()
-	if( UnitHasVehicleUI("player") ) then
-		playerUnit = "vehicle"
-	else
-		playerUnit = "player"
-	end
-	
+	playerUnit = UnitHasVehicleUI("player") and "vehicle" or "player"
 	self:UNIT_AURA(nil, playerUnit)
 end
 
@@ -831,6 +799,7 @@ function SimpleBB:ParseName(slotID)
 		local text = getglobal("SimpleBBTooltipTextLeft" .. i):GetText()
 		local name = string.match(text, "^(.+) %(%d+[^%)]+%)$")
 		if( name ) then
+			-- Strip any remaining brackets for things such as fishing which shows +100 Fishing as well
 			name = string.gsub(name, " %(%d+[^%)]+%)", "")
 			
 			local tName, rank = string.match(name, "^(.*)(%w*)$")
@@ -849,12 +818,9 @@ end
 local tempStartTime = {}
 function SimpleBB:UpdateTempEnchant(buff, slotID, hasEnchant, timeLeft, charges)
 	local name, rank = self:ParseName(slotID)
-	
-	-- When the players entering/leaving the world, we get a bad return on the name/rank
-	-- So we only update it if we found one, and thus fixes it!
-	if( name ) then
-		buff.name = name
-		buff.rank = rank
+	if( not name ) then
+		buff.enabled = false
+		return
 	end
 
 	timeLeft = timeLeft / 1000
@@ -871,6 +837,8 @@ function SimpleBB:UpdateTempEnchant(buff, slotID, hasEnchant, timeLeft, charges)
 	buff.type = "tempEnchants"
 	buff.slotID = slotID
 	buff.unit = "player"
+	buff.name = name
+	buff.rank = rank
 
 	buff.timeLeft = timeLeft
 	buff.endTime = GetTime() + timeLeft
@@ -880,32 +848,84 @@ function SimpleBB:UpdateTempEnchant(buff, slotID, hasEnchant, timeLeft, charges)
 	buff.stack = charges or 0
 end
 
+function SimpleBB:PLAYER_ENTERING_WORLD()
+		self:RegisterEvent("UNIT_AURA")
+		self:RegisterEvent("UNIT_ENTERED_VEHICLE", "CheckVehicleStatus")
+		self:RegisterEvent("UNIT_EXITED_VEHICLE", "CheckVehicleStatus")
+		self:RegisterEvent("MINIMAP_UPDATE_TRACKING", "UpdateTracking")
+		self:UnregisterEvent("PLAYER_ENTERING_WORLD")
+		
+		-- Fixes Track Humanoids not being changed correctly
+		if( select(2, UnitClass("player")) == "DRUID" ) then
+			self:RegisterEvent("UPDATE_SHAPESHIFT_FORM", "UpdateTracking")
+		end
+		
+		-- Update visuals
+		self:ReloadBars()
+		
+		-- Show temp buffs? Show our timer frame then
+		if( self.db.profile.showTemp ) then
+			frame:Show()
+		else
+			frame:Hide()
+		end
+		
+		-- Update buffs
+		self:CheckVehicleStatus()
+		self:UNIT_AURA(nil, playerUnit)
+		self:UpdateTracking()
+end
+
 -- Update temp weapons
 local timeElapsed = 0
+local mainHand, offHand = {}, {}
 frame:SetScript("OnUpdate", function(self, elapsed)
 	timeElapsed = timeElapsed + elapsed
 	
-	if( timeElapsed >= 1 ) then
-		timeElapsed = 0
-		self = SimpleBB
+	if( timeElapsed < 0.50 ) then
+		return
+	end
+	
+	timeElapsed = 0
+	self = SimpleBB
 
-		local hasMain, mainTimeLeft, mainCharges, hasOff, offTimeLeft, offCharges = GetWeaponEnchantInfo()
-		
-		if( hasMain ) then
-			MAINHAND_BUFF_INDEX = MAINHAND_BUFF_INDEX or self:FindAvailableIndex(ENCHANT_ANCHOR, "tempEnchants")
-			self:UpdateTempEnchant(self.auras[ENCHANT_ANCHOR][MAINHAND_BUFF_INDEX], MAINHAND_SLOT, hasMain, mainTimeLeft, mainCharges)
-		elseif( MAINHAND_BUFF_INDEX ) then
+	local hasMain, mainTimeLeft, mainCharges, hasOff, offTimeLeft, offCharges = GetWeaponEnchantInfo()
+	local updated
+
+	-- Update main hand if it's changed
+	if( hasMain and mainTimeLeft and mainCharges ) then
+			if( not mainHand.time or mainHand.time < mainTimeLeft or mainHand.charges > mainCharges ) then
+				updated = true
+				MAINHAND_BUFF_INDEX = MAINHAND_BUFF_INDEX or self:FindAvailableIndex(ENCHANT_ANCHOR, "tempEnchants")
+				self:UpdateTempEnchant(self.auras[ENCHANT_ANCHOR][MAINHAND_BUFF_INDEX], MAINHAND_SLOT, hasMain, mainTimeLeft, mainCharges)
+			end
+	elseif( MAINHAND_BUFF_INDEX and not hasMain and mainHand.has ) then
+			updated = true
 			self.auras[ENCHANT_ANCHOR][MAINHAND_BUFF_INDEX].enabled = false
-		end
-		
-		if( hasOff ) then
-			OFFHAND_BUFF_INDEX = OFFHAND_BUFF_INDEX or self:FindAvailableIndex(ENCHANT_ANCHOR, "tempEnchants")
-			self:UpdateTempEnchant(self.auras[ENCHANT_ANCHOR][OFFHAND_BUFF_INDEX], OFFHAND_SLOT, hasOff, offTimeLeft, offCharges)
-		elseif( OFFHAND_BUFF_INDEX ) then
+	end
+	
+	mainHand.has = hasMain
+	mainHand.time = mainTimeLeft
+	mainHand.charges = mainCharges
+
+	-- Update off hand if it's changed
+	if( hasOff and offTimeLeft and offCharges ) then
+			if( not offHand.time or offHand.time < offTimeLeft or offHand.charges > offCharges ) then
+				updated = true
+				OFFHAND_BUFF_INDEX = OFFHAND_BUFF_INDEX or self:FindAvailableIndex(ENCHANT_ANCHOR, "tempEnchants")
+				self:UpdateTempEnchant(self.auras[ENCHANT_ANCHOR][OFFHAND_BUFF_INDEX], OFFHAND_SLOT, hasOff, offTimeLeft, offCharges)
+			end
+	elseif( OFFHAND_BUFF_INDEX and not hasOff and offHand.has ) then
+			updated = true
 			self.auras[ENCHANT_ANCHOR][OFFHAND_BUFF_INDEX].enabled = false
-		end
-		
-		-- Update if needed
+	end
+
+	offHand.has = hasOff
+	offHand.time = offTimeLeft
+	offHand.charges = offCharges
+	
+	-- Update if needed
+	if( updated ) then
 		SimpleBB:UpdateDisplay(ENCHANT_ANCHOR)
 	end
 end)

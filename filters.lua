@@ -15,12 +15,12 @@ end
 
 function Filters:Reload()
 	if( SimpleBB.db.profile.autoFilter ) then
-		self:RegisterEvent("CHARACTER_POINTS_CHANGED")
+		self:RegisterEvent("SPELLS_CHANGED")
 		self:CheckAutoLoad()
 		return
 	end
 
-	self:UnregisterEvent("CHARACTER_POINTS_CHANGED")
+	self:UnregisterEvent("SPELLS_CHANGED")
 	for type, enabled in pairs(SimpleBB.db.profile.filtersEnabled) do
 		if( enabled ) then
 			self:Load(type)
@@ -31,10 +31,8 @@ function Filters:Reload()
 end
 
 -- Recheck auto loading
-function Filters:CHARACTER_POINTS_CHANGED(event, amount)
-	if( UnitCharacterPoints("player") == 0 ) then
-		self:CheckAutoLoad()
-	end
+function Filters:SPELLS_CHANGED()
+	self:CheckAutoLoad()
 end
 
 function Filters:CheckAutoLoad()

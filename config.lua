@@ -119,7 +119,7 @@ function Config:GetGroupList(info)
 	groupList[""] = L["None"]
 	
 	for key, group in pairs(SimpleBB.db.profile.groups) do
-		if( key ~= info[1] ) then
+		if( key ~= info[1] and group.anchorTo ~= info[1] ) then
 			groupList[key] = group.name
 		end
 	end

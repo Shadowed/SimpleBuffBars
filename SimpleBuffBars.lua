@@ -19,12 +19,10 @@ function SimpleBB:OnInitialize()
 			showTrack = true,
 			showExample = false,
 			showExtras = false,
-			
+			showTemp = true,
 			autoFilter = false,
 			filtersEnabled = {["Caster"] = false, ["Physical"] = false},
-			
 			groups = {},
-
 			anchors = {
 				enabled = true,
 				tempColor = {r = 0.5, g = 0.0, b = 0.5},
@@ -63,7 +61,7 @@ function SimpleBB:OnInitialize()
 	self.defaults.profile.groups.tempEnchants.name = L["Temporary enchants"]
 	
 	-- Initialize the DB
-	self.db = LibStub:GetLibrary("AceDB-3.0"):New("SimpleBBDB", self.defaults)
+	self.db = LibStub:GetLibrary("AceDB-3.0"):New("SimpleBBDB", self.defaults, true)
 	self.db.RegisterCallback(self, "OnProfileChanged", "Reload")
 	self.db.RegisterCallback(self, "OnProfileCopied", "Reload")
 	self.db.RegisterCallback(self, "OnProfileReset", "Reload")
@@ -276,7 +274,7 @@ end
 
 -- Bar scripts
 local function OnDragStart(self)
-	if( IsAltKeyDown() and not SimpleBB.db.profile.locked ) then
+	if( not SimpleBB.db.profile.locked ) then
 		local parent = self:GetParent()
 		if( parent:IsMovable() ) then
 			parent:StartMoving()
@@ -818,6 +816,11 @@ end
 -- Update temp weapon enchants
 local tempStartTime = {}
 function SimpleBB:UpdateTempEnchant(buff, slotID, hasEnchant, timeLeft, charges)
+	if( not hasEnchant ) then
+		buff.enabled = false
+		return
+	end
+	
 	local name, rank = self:ParseName(slotID)
 	if( not name ) then
 		buff.enabled = false
@@ -850,36 +853,36 @@ function SimpleBB:UpdateTempEnchant(buff, slotID, hasEnchant, timeLeft, charges)
 end
 
 function SimpleBB:PLAYER_ENTERING_WORLD()
-		self:RegisterEvent("UNIT_AURA")
-		self:RegisterEvent("UNIT_ENTERED_VEHICLE", "CheckVehicleStatus")
-		self:RegisterEvent("UNIT_EXITED_VEHICLE", "CheckVehicleStatus")
-		self:RegisterEvent("MINIMAP_UPDATE_TRACKING", "UpdateTracking")
-		self:UnregisterEvent("PLAYER_ENTERING_WORLD")
-		
-		-- Fixes Track Humanoids not being changed correctly
-		if( select(2, UnitClass("player")) == "DRUID" ) then
-			self:RegisterEvent("UPDATE_SHAPESHIFT_FORM", "UpdateTracking")
-		end
-		
-		-- Update visuals
-		self:ReloadBars()
-		
-		-- Show temp buffs? Show our timer frame then
-		if( self.db.profile.showTemp ) then
-			frame:Show()
-		else
-			frame:Hide()
-		end
-		
-		-- Update buffs
-		self:CheckVehicleStatus()
-		self:UNIT_AURA(nil, playerUnit)
-		self:UpdateTracking()
+	self:RegisterEvent("UNIT_AURA")
+	self:RegisterEvent("UNIT_ENTERED_VEHICLE", "CheckVehicleStatus")
+	self:RegisterEvent("UNIT_EXITED_VEHICLE", "CheckVehicleStatus")
+	self:RegisterEvent("MINIMAP_UPDATE_TRACKING", "UpdateTracking")
+	self:UnregisterEvent("PLAYER_ENTERING_WORLD")
+	
+	-- Fixes Track Humanoids not being changed correctly
+	if( select(2, UnitClass("player")) == "DRUID" ) then
+		self:RegisterEvent("UPDATE_SHAPESHIFT_FORM", "UpdateTracking")
+	end
+	
+	-- Update visuals
+	self:ReloadBars()
+	
+	-- Show temp buffs? Show our timer frame then
+	if( self.db.profile.showTemp ) then
+		frame:Show()
+	else
+		frame:Hide()
+	end
+	
+	-- Update buffs
+	self:CheckVehicleStatus()
+	self:UNIT_AURA(nil, playerUnit)
+	self:UpdateTracking()
 end
 
 -- Update temp weapons
 local timeElapsed = 0
-local mainHand, offHand = {}, {}
+local mainHand, offHand = {time = 0}, {time = 0}
 frame:SetScript("OnUpdate", function(self, elapsed)
 	timeElapsed = timeElapsed + elapsed
 	
@@ -892,17 +895,13 @@ frame:SetScript("OnUpdate", function(self, elapsed)
 
 	local hasMain, mainTimeLeft, mainCharges, hasOff, offTimeLeft, offCharges = GetWeaponEnchantInfo()
 	local updated
-
+	
 	-- Update main hand if it's changed
-	if( hasMain and mainTimeLeft and mainCharges ) then
-			if( not mainHand.time or mainHand.time < mainTimeLeft or mainHand.charges > mainCharges ) then
-				updated = true
-				MAINHAND_BUFF_INDEX = MAINHAND_BUFF_INDEX or self:FindAvailableIndex(ENCHANT_ANCHOR, "tempEnchants")
-				self:UpdateTempEnchant(self.auras[ENCHANT_ANCHOR][MAINHAND_BUFF_INDEX], MAINHAND_SLOT, hasMain, mainTimeLeft, mainCharges)
-			end
-	elseif( MAINHAND_BUFF_INDEX and not hasMain and mainHand.has ) then
-			updated = true
-			self.auras[ENCHANT_ANCHOR][MAINHAND_BUFF_INDEX].enabled = false
+	mainTimeLeft = mainTimeLeft or 0
+	if( hasMain ~= mainHand.has or mainTimeLeft > mainHand.time or mainHand.charges ~= mainCharges ) then
+		updated = true
+		MAINHAND_BUFF_INDEX = MAINHAND_BUFF_INDEX or self:FindAvailableIndex(ENCHANT_ANCHOR, "tempEnchants")
+		self:UpdateTempEnchant(self.auras[ENCHANT_ANCHOR][MAINHAND_BUFF_INDEX], MAINHAND_SLOT, hasMain, mainTimeLeft, mainCharges)
 	end
 	
 	mainHand.has = hasMain
@@ -910,18 +909,14 @@ frame:SetScript("OnUpdate", function(self, elapsed)
 	mainHand.charges = mainCharges
 
 	-- Update off hand if it's changed
-	if( hasOff and offTimeLeft and offCharges ) then
-			if( not offHand.time or offHand.time < offTimeLeft or offHand.charges > offCharges ) then
-				updated = true
-				OFFHAND_BUFF_INDEX = OFFHAND_BUFF_INDEX or self:FindAvailableIndex(ENCHANT_ANCHOR, "tempEnchants")
-				self:UpdateTempEnchant(self.auras[ENCHANT_ANCHOR][OFFHAND_BUFF_INDEX], OFFHAND_SLOT, hasOff, offTimeLeft, offCharges)
-			end
-	elseif( OFFHAND_BUFF_INDEX and not hasOff and offHand.has ) then
-			updated = true
-			self.auras[ENCHANT_ANCHOR][OFFHAND_BUFF_INDEX].enabled = false
+	offTimeLeft = offTimeLeft or 0
+	if( hasMain ~= offHand.has or offTimeLeft > offHand.time or offHand.charges ~= offCharges ) then
+		updated = true
+		OFFHAND_BUFF_INDEX = OFFHAND_BUFF_INDEX or self:FindAvailableIndex(ENCHANT_ANCHOR, "tempEnchants")
+		self:UpdateTempEnchant(self.auras[ENCHANT_ANCHOR][OFFHAND_BUFF_INDEX], OFFHAND_SLOT, hasOff, offTimeLeft, offCharges)
 	end
-
-	offHand.has = hasOff
+	
+	offHand.has = hasMain
 	offHand.time = offTimeLeft
 	offHand.charges = offCharges
 	
@@ -989,24 +984,31 @@ function SimpleBB:Reload()
 		self.auras.buffs[TRACKING_INDEX].enabled = false
 	end
 	
-	-- Update tracking
+	-- Force it to find the temp enchant indexes again in case it moved anchors
+	if( MAINHAND_BUFF_INDEX ) then
+		self.auras[ENCHANT_ANCHOR][MAINHAND_BUFF_INDEX].enabled = false
+		self.auras[ENCHANT_ANCHOR][MAINHAND_BUFF_INDEX].ignore = false
+
+		MAINHAND_BUFF_INDEX = nil
+	end
+	
+	if( OFFHAND_BUFF_INDEX ) then
+		self.auras[ENCHANT_ANCHOR][OFFHAND_BUFF_INDEX].enabled = false
+		self.auras[ENCHANT_ANCHOR][OFFHAND_BUFF_INDEX].ignore = false
+
+		OFFHAND_BUFF_INDEX = nil
+	end
+	
+	-- Update temporary enchants
 	if( not self.db.profile.showTemp ) then
-		if( MAINHAND_BUFF_INDEX ) then
-			self.auras[ENCHANT_ANCHOR][MAINHAND_BUFF_INDEX].enabled = false
-		end
-		
-		if( OFFHAND_BUFF_INDEX ) then
-			self.auras[ENCHANT_ANCHOR][OFFHAND_BUFF_INDEX].enabled = false
-		end
 		frame:Hide()
 	else
 		frame:Show()
+		
+		mainHand = {time = 0}
+		offHand = {time = 0}
 	end
-	
-	-- Force it to find the temp enchant indexes again in case it moved anchors
-	MAINHAND_BUFF_INDEX = nil
-	OFFHAND_BUFF_INDEX = nil
-	
+
 	-- Check if we should swap the enchant anchor to something else
 	if( self.db.profile.groups.tempEnchants.moveTo ~= "" ) then
 		ENCHANT_ANCHOR = self.db.profile.groups.tempEnchants.moveTo

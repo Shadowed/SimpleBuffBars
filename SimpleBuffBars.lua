@@ -9,6 +9,7 @@ local L = SimpleBBLocals
 local SML, MAINHAND_SLOT, OFFHAND_SLOT, MAINHAND_BUFF_INDEX, OFFHAND_BUFF_INDEX, TRACKING_INDEX
 local playerUnit = "player"
 local ENCHANT_ANCHOR = "tempEnchants"
+local _G = getfenv(0)
 
 local frame = CreateFrame("Frame")
 
@@ -795,7 +796,7 @@ function SimpleBB:ParseName(slotID)
 	self.tooltip:SetInventoryItem("player", slotID)
 	
 	for i=1, self.tooltip:NumLines() do
-		local text = getglobal("SimpleBBTooltipTextLeft" .. i):GetText()
+		local text = _G["SimpleBBTooltipTextLeft" .. i]:GetText()
 		local name = string.match(text, "^(.+) %(%d+[^%)]+%)$")
 		if( name ) then
 			-- Strip any remaining brackets for things such as fishing which shows +100 Fishing as well
@@ -910,13 +911,13 @@ frame:SetScript("OnUpdate", function(self, elapsed)
 
 	-- Update off hand if it's changed
 	offTimeLeft = offTimeLeft or 0
-	if( hasMain ~= offHand.has or offTimeLeft > offHand.time or offHand.charges ~= offCharges ) then
+	if( hasOff ~= offHand.has or offTimeLeft > offHand.time or offHand.charges ~= offCharges ) then
 		updated = true
 		OFFHAND_BUFF_INDEX = OFFHAND_BUFF_INDEX or self:FindAvailableIndex(ENCHANT_ANCHOR, "tempEnchants")
 		self:UpdateTempEnchant(self.auras[ENCHANT_ANCHOR][OFFHAND_BUFF_INDEX], OFFHAND_SLOT, hasOff, offTimeLeft, offCharges)
 	end
 	
-	offHand.has = hasMain
+	offHand.has = hasOff
 	offHand.time = offTimeLeft
 	offHand.charges = offCharges
 	

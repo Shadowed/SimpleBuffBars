@@ -1,7 +1,6 @@
-if( not SimpleBB ) then return end
-
+local SimpleBB = select(2, ...)
 local Extras = SimpleBB:NewModule("Extras", "AceEvent-3.0")
-local L = SimpleBBLocals
+local L = SimpleBB.L
 local units = {["target"] = true, ["focus"] = true, ["pet"] = true}
 local groups = {"targetbuffs", "targetdebuffs", "focusbuffs", "focusdebuffs", "petbuffs", "petdebuffs"}
 

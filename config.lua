@@ -1,7 +1,6 @@
-if( not SimpleBB ) then return end
-
+local SimpleBB = select(2, ...)
 local Config = SimpleBB:NewModule("Config")
-local L = SimpleBBLocals
+local L = SimpleBB.L
 
 local SML, registered, options, config, dialog
 local globalSettings = {}

@@ -1,7 +1,6 @@
-if( not SimpleBB ) then return end
-
+local SimpleBB = select(2, ...)
 local Filters = SimpleBB:NewModule("Filters", "AceEvent-3.0")
-local L = SimpleBBLocals
+local L = SimpleBB.L
 
 local loadedData, loadedFilters, filteredBuffs = {}, {}, {}
 local filterList = {["Caster"] = L["Caster"], ["Physical"] = L["Physical"]}

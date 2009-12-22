@@ -1,7 +1,9 @@
 ﻿if( GetLocale() ~= "koKR" ) then
 	return
 end
-SimpleBBLocals = setmetatable({
+
+local SimpleBB = select(2, ...)
+SimpleBB.L = setmetatable({
 	["None"] = "None",
 
 	-- GUI
@@ -128,4 +130,4 @@ SimpleBBLocals = setmetatable({
 	["Show stack first"] = "Show stack first",
 	["Show stack size"] = "Show stack size",
 	["Show spell rank"] = "Show spell rank",
-}, {__index = SimpleBBLocals})
+}, {__index = SimpleBB.L})

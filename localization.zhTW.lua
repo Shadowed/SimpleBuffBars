@@ -2,7 +2,9 @@
 if( GetLocale() ~= "zhTW" ) then
 	return
 end
-SimpleBBLocals = setmetatable({
+
+local SimpleBB = select(2, ...)
+SimpleBB.L = setmetatable({
 	["None"] = "無",
 
 	-- GUI
@@ -124,4 +126,4 @@ SimpleBBLocals = setmetatable({
 	["Show stack first"] = "優先顯示堆疊",
 	["Show stack size"] = "顯示可堆疊數量",
 	["Show spell rank"] = "顯示法術等級",
-}, {__index = SimpleBBLocals})
+}, {__index = SimpleBB.L})

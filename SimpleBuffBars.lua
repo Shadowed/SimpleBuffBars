@@ -1,10 +1,10 @@
 --[[ 
-	Simple Buff Bars, Mayen/Selari (Horde) from Illidan (US) PvP
+	Simple Buff Bars, Shadow from Mal'Ganis US
 ]]
 
-SimpleBB = LibStub("AceAddon-3.0"):NewAddon("SimpleBB", "AceEvent-3.0")
-
-local L = SimpleBBLocals
+local SimpleBB = select(2, ...)
+SimpleBB = LibStub("AceAddon-3.0"):NewAddon(SimpleBB, "SimpleBB", "AceEvent-3.0")
+local L = SimpleBB.L
 
 local SML, MAINHAND_SLOT, OFFHAND_SLOT, MAINHAND_BUFF_INDEX, OFFHAND_BUFF_INDEX, TRACKING_INDEX
 local playerUnit = "player"
@@ -786,73 +786,6 @@ function SimpleBB:UpdateTracking()
 	self:UpdateDisplay("buffs")
 end
 
--- Parse out name/rank from a temp weapon buff
-function SimpleBB:ParseName(slotID)
-	if( not self.tooltip ) then
-		self.tooltip = CreateFrame("GameTooltip", "SimpleBBTooltip", UIParent, "GameTooltipTemplate")
-		self.tooltip:SetOwner(UIParent, "ANCHOR_NONE")
-	end
-	
-	self.tooltip:SetInventoryItem("player", slotID)
-	
-	for i=1, self.tooltip:NumLines() do
-		local text = _G["SimpleBBTooltipTextLeft" .. i]:GetText()
-		local name = string.match(text, "^(.+) %(%d+[^%)]+%)$")
-		if( name ) then
-			-- Strip any remaining brackets for things such as fishing which shows +100 Fishing as well
-			name = string.gsub(name, " %(%d+[^%)]+%)", "")
-			
-			local tName, rank = string.match(name, "^(.*)(%w*)$")
-			if( tName and rank ) then
-				name = tName
-			end
-			
-			return name, rank
-		end
-	end
-	
-	return nil, nil
-end
-
--- Update temp weapon enchants
-local tempStartTime = {}
-function SimpleBB:UpdateTempEnchant(buff, slotID, hasEnchant, timeLeft, charges)
-	if( not hasEnchant ) then
-		buff.enabled = false
-		return
-	end
-	
-	local name, rank = self:ParseName(slotID)
-	if( not name ) then
-		buff.enabled = false
-		return
-	end
-
-	timeLeft = timeLeft / 1000
-	
-	local enchantID = name .. (rank or "")
-	
-	-- Record the highest start time for the temp enchant
-	if( not tempStartTime[enchantID] or tempStartTime[enchantID] < timeLeft ) then
-		tempStartTime[enchantID] = timeLeft
-	end	
-	
-	buff.enabled = true
-	buff.ignore = true
-	buff.type = "tempEnchants"
-	buff.slotID = slotID
-	buff.unit = "player"
-	buff.name = name
-	buff.rank = rank
-
-	buff.timeLeft = timeLeft
-	buff.endTime = GetTime() + timeLeft
-	buff.startSeconds = tempStartTime[enchantID]
-
-	buff.icon = GetInventoryItemTexture("player", slotID)
-	buff.stack = charges or 0
-end
-
 function SimpleBB:PLAYER_ENTERING_WORLD()
 	self:RegisterEvent("UNIT_AURA")
 	self:RegisterEvent("UNIT_ENTERED_VEHICLE", "CheckVehicleStatus")
@@ -881,49 +814,113 @@ function SimpleBB:PLAYER_ENTERING_WORLD()
 	self:UpdateTracking()
 end
 
+-- Parse out name/rank from a temp weapon buff
+function SimpleBB:ParseName(slotID)
+	if( not self.tooltip ) then
+		self.tooltip = CreateFrame("GameTooltip", "SimpleBBTooltip", UIParent, "GameTooltipTemplate")
+		self.tooltip:SetOwner(UIParent, "ANCHOR_NONE")
+	end
+	
+	self.tooltip:SetInventoryItem("player", slotID)
+	
+	for i=1, self.tooltip:NumLines() do
+		local text = _G["SimpleBBTooltipTextLeft" .. i]:GetText()
+		local name = string.match(text, "^(.+) %(%d+[^%)]+%)$")
+		if( name ) then
+			-- Strip any remaining brackets for things such as fishing which shows +100 Fishing as well
+			name = string.gsub(name, " %(%d+[^%)]+%)", "")
+			
+			local tName, rank = string.match(name, "^(.*)(%w*)$")
+			if( tName and rank ) then
+				name = tName
+			end
+			
+			return name, rank
+		end
+	end
+	
+	return nil, nil
+end
+-- Update temp weapon enchants
+local function updateTemporaryEnchant(buff, slotID, tempData, hasEnchant, timeLeft, charges)
+	-- If there's less than a 750 millisecond differences in the times, we don't need to bother updating.
+	-- Any sort of enchant takes more than 0.750 seconds to cast so it's impossible for the user to have two
+	-- temporary enchants with that little difference, as totems don't really give pulsing auras anymore.
+	if( tempData.has and ( timeLeft < tempData.time and ( tempData.time - timeLeft ) < 750 ) and charges == tempData.charges ) then return false end
+	if( timeLeft > tempData.time or not tempData.has ) then
+		tempData.startTime = GetTime()
+	end
+	
+	tempData.has = hasEnchant
+	tempData.time = timeLeft
+	tempData.charges = charges
+
+	local name, rank = SimpleBB:ParseName(slotID)
+	if( not name ) then
+		buff.enabled = false
+		return false
+	end
+	
+	buff.enabled = true
+	buff.ignore = true
+	buff.type = "tempEnchants"
+	buff.slotID = slotID
+	buff.unit = "player"
+	buff.name = name
+	buff.rank = rank
+
+	buff.timeLeft = timeLeft / 1000
+	buff.endTime = GetTime() + buff.timeLeft
+	buff.startSeconds = buff.endTime - tempData.startTime
+
+	buff.icon = GetInventoryItemTexture("player", slotID)
+	buff.stack = charges or 0
+	
+	return true
+end
+
 -- Update temp weapons
 local timeElapsed = 0
 local mainHand, offHand = {time = 0}, {time = 0}
 frame:SetScript("OnUpdate", function(self, elapsed)
 	timeElapsed = timeElapsed + elapsed
-	
-	if( timeElapsed < 0.50 ) then
-		return
-	end
-	
-	timeElapsed = 0
+	if( timeElapsed < 0.50 ) then return end
+	timeElapsed = timeElapsed - 0.50
 	self = SimpleBB
 
 	local hasMain, mainTimeLeft, mainCharges, hasOff, offTimeLeft, offCharges = GetWeaponEnchantInfo()
-	local updated
+	local offUpdated, mainUpdated
 	
 	-- Update main hand if it's changed
-	mainTimeLeft = mainTimeLeft or 0
-	if( hasMain ~= mainHand.has or mainTimeLeft > mainHand.time or mainHand.charges ~= mainCharges ) then
-		updated = true
+	if( hasMain ) then
 		MAINHAND_BUFF_INDEX = MAINHAND_BUFF_INDEX or self:FindAvailableIndex(ENCHANT_ANCHOR, "tempEnchants")
-		self:UpdateTempEnchant(self.auras[ENCHANT_ANCHOR][MAINHAND_BUFF_INDEX], MAINHAND_SLOT, hasMain, mainTimeLeft, mainCharges)
+		mainUpdated = updateTemporaryEnchant(self.auras[ENCHANT_ANCHOR][MAINHAND_BUFF_INDEX], MAINHAND_SLOT, mainHand, hasMain, mainTimeLeft, mainCharges)
+		mainHand.time = mainTimeLeft or 0
+	elseif( mainHand.has ) then
+		MAINHAND_BUFF_INDEX = MAINHAND_BUFF_INDEX or self:FindAvailableIndex(ENCHANT_ANCHOR, "tempEnchants")
+		self.auras[ENCHANT_ANCHOR][MAINHAND_BUFF_INDEX].enabled = false
+		mainHand.charges = -1
+		mainUpdated = true
 	end
 	
 	mainHand.has = hasMain
-	mainHand.time = mainTimeLeft
-	mainHand.charges = mainCharges
 
 	-- Update off hand if it's changed
-	offTimeLeft = offTimeLeft or 0
-	if( hasOff ~= offHand.has or offTimeLeft > offHand.time or offHand.charges ~= offCharges ) then
-		updated = true
+	if( hasOff ) then
 		OFFHAND_BUFF_INDEX = OFFHAND_BUFF_INDEX or self:FindAvailableIndex(ENCHANT_ANCHOR, "tempEnchants")
-		self:UpdateTempEnchant(self.auras[ENCHANT_ANCHOR][OFFHAND_BUFF_INDEX], OFFHAND_SLOT, hasOff, offTimeLeft, offCharges)
+		offUpdated = updateTemporaryEnchant(self.auras[ENCHANT_ANCHOR][OFFHAND_BUFF_INDEX], OFFHAND_SLOT, offHand, hasOff, offTimeLeft, offCharges)
+	elseif( offHand.has ) then
+		OFFHAND_BUFF_INDEX = OFFHAND_BUFF_INDEX or self:FindAvailableIndex(ENCHANT_ANCHOR, "tempEnchants")
+		self.auras[ENCHANT_ANCHOR][OFFHAND_BUFF_INDEX].enabled = false
+		offHand.charges = -1
+		offUpdated = true
 	end
 	
 	offHand.has = hasOff
-	offHand.time = offTimeLeft
-	offHand.charges = offCharges
 	
 	-- Update if needed
-	if( updated ) then
-		SimpleBB:UpdateDisplay(ENCHANT_ANCHOR)
+	if( mainUpdated or offUpdated ) then
+		self:UpdateDisplay(ENCHANT_ANCHOR)
 	end
 end)
 

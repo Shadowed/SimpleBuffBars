@@ -1,7 +1,7 @@
-## Interface: 30200
+## Interface: 30300
 ## Title: Simple Buff Bars
 ## Notes: Buff/Debuff bars for the player. Now with less evil.
-## Author: Mayen/Selari
+## Author: Shadowed
 ## SavedVariables: SimpleBBDB
 ## OptionalDeps: LibStub, Ace3
 

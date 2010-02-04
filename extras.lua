@@ -3,6 +3,8 @@ local Extras = SimpleBB:NewModule("Extras", "AceEvent-3.0")
 local L = SimpleBB.L
 local units = {["target"] = true, ["focus"] = true, ["pet"] = true}
 local groups = {"targetbuffs", "targetdebuffs", "focusbuffs", "focusdebuffs", "petbuffs", "petdebuffs"}
+local nameMap = {["targetbuffs"] = L["Target buffs"], ["targetdebuffs"] = L["Target debuffs"], ["focusbuffs"] = L["Focus buffs"], ["focusdebuffs"] = L["Focus debuffs"], ["petbuffs"] = L["Pet buffs"], ["petdebuffs"] = L["Pet debuffs"]}
+local buffCache, debuffCache = {}, {}
 
 function Extras:OnInitialize()
 	if( SimpleBB.db.profile.showExtras ) then
@@ -15,11 +17,14 @@ function Extras:UNIT_AURA(event, unit)
 		return
 	end
 	
-	SimpleBB:UpdateAuras(unit .. "buffs", unit, "HELPFUL")
-	SimpleBB:UpdateDisplay(unit .. "buffs")
+	buffCache[unit] = buffCache[unit] or unit .. "buffs"
+	debuffCache[unit] = debuffCache[unit] or unit .. "debuffs"
+	
+	SimpleBB:UpdateAuras(buffCache[unit], unit, "HELPFUL")
+	SimpleBB:UpdateDisplay(buffCache[unit])
 
-	SimpleBB:UpdateAuras(unit .. "debuffs", unit, "HARMFUL")
-	SimpleBB:UpdateDisplay(unit .. "debuffs")
+	SimpleBB:UpdateAuras(debuffCache[unit], unit, "HARMFUL")
+	SimpleBB:UpdateDisplay(debuffCache[unit])
 end
 
 function Extras:PLAYER_TARGET_CHANGED()
@@ -47,7 +52,7 @@ function Extras:Enable()
 		if( not SimpleBB.db.profile.groups[key] ) then
 			SimpleBB.db.profile.groups[key] = CopyTable(SimpleBB.defaults.profile.anchors)
 			SimpleBB.db.profile.groups[key].enabled = false
-			SimpleBB.db.profile.groups[key].name = L[key]
+			SimpleBB.db.profile.groups[key].name = nameMap[key] or key
 		end
 	end
 	
@@ -115,7 +120,7 @@ function Extras:CreateConfiguration()
 	local Config = SimpleBB.modules.Config
 	for _, key in pairs(groups) do
 		if( not Config.options.args[key] ) then
-			Config.options.args[key] = Config:CreateGroupConfig(key, L[key])
+			Config.options.args[key] = Config:CreateGroupConfig(key, SimpleBB.db.profile.groups[key].name)
 		end
 	end
 end

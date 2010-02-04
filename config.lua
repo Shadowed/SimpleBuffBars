@@ -486,7 +486,7 @@ local function loadOptions()
 	end)
 	
 	for _, key in pairs(groups) do
-		options.args[key] = Config:CreateGroupConfig(key, SimpleBB.db.profile.groups[key].name)
+		options.args[key] = Config:CreateGroupConfig(key, SimpleBB.db.profile.groups[key].name or key)
 	end
 	
 	-- DB Profiles

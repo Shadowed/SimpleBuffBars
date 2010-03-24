@@ -6,6 +6,9 @@ local loadedData, loadedFilters, filteredBuffs = {}, {}, {}
 local filterList = {["Caster"] = L["Caster"], ["Physical"] = L["Physical"]}
 local frame
 local timeElapsed = 0
+local function getName(spellID)
+	return GetSpellInfo(spellID) or ""
+end
 
 -- Setup filters if needed
 function Filters:OnInitialize()
@@ -151,35 +154,35 @@ end
 function Filters:LoadCaster()
 	local list = {
 		-- Horn of Winter
-		[(GetSpellInfo(57623))] = true,
+		[getName(57623)] = true,
 		-- Stoneskin
-		[(GetSpellInfo(8072))] = true,
+		[getName(8072)] = true,
 		-- Strength of Earth Totem
-		[(GetSpellInfo(58643))] = true,
+		[getName(58643)] = true,
 		-- Battle Shout
-		[(GetSpellInfo(59614))] = true,
+		[getName(59614)] = true,
 		-- Blessing of Might
-		[(GetSpellInfo(56520))] = true,
+		[getName(56520)] = true,
 		-- Greater Blessing of Might
-		[(GetSpellInfo(48934))] = true,
+		[getName(48934)] = true,
 		-- Furious Howl
-		[(GetSpellInfo(59274))] = true,
+		[getName(59274)] = true,
 		-- Abomination's Might
-		[(GetSpellInfo(53136))] = true,
+		[getName(53136)] = true,
 		-- Trueshot Aura
-		[(GetSpellInfo(31519))] = true,
+		[getName(31519)] = true,
 		-- Unleashed Rage
-		[(GetSpellInfo(30805))] = true,
+		[getName(30805)] = true,
 		-- Leader of the Pack
-		[(GetSpellInfo(24932))] = true,
+		[getName(24932)] = true,
 		-- Rampage
-		[(GetSpellInfo(54475))] = true,
+		[getName(54475)] = true,
 		-- Improved Icy Talons
-		[(GetSpellInfo(55789))] = true,
+		[getName(55789)] = true,
 		-- Windfury Totem
-		[(GetSpellInfo(27621))] = true,
+		[getName(27621)] = true,
 		-- Strength of Earth
-		[(GetSpellInfo(8076))] = true,
+		[getName(8076)] = true,
 	}
 	
 	return list
@@ -188,29 +191,29 @@ end
 function Filters:LoadPhysical()
 	local list = {
 		-- Arcane Intellect
-		[(GetSpellInfo(45525))] = true,
+		[getName(45525)] = true,
 		-- Fel Intelligence
-		[(GetSpellInfo(57567))] = true,
+		[getName(57567)] = true,
 		-- Blessing of Wisdom
-		[(GetSpellInfo(56521))] = true,
+		[getName(56521)] = true,
 		-- Greater Blessing of Wisdom
-		[(GetSpellInfo(48938))] = true,
+		[getName(48938)] = true,
 		-- Replenishment
-		[(GetSpellInfo(57669))] = true,
+		[getName(57669)] = true,
 		-- Moonkin Aura
-		[(GetSpellInfo(24907))] = true,
+		[getName(24907)] = true,
 		-- Elemental Oath
-		[(GetSpellInfo(53414))] = true,
+		[getName(51466)] = true,
 		-- Wrath of Air Totem
-		[(GetSpellInfo(3738))] = true,
+		[getName(3738)] = true,
 		-- Demonic Pact
-		[(GetSpellInfo(54909))] = true,
+		[getName(54909)] = true,
 		-- Flametongue Totem
-		[(GetSpellInfo(58656))] = true,
+		[getName(58656)] = true,
 		-- Totem of Wrath
-		[(GetSpellInfo(57722))] = true,
+		[getName(57722)] = true,
 		-- Divine Spirit
-		[(GetSpellInfo(48073))] = true,
+		[getName(48073)] = true,
 	}
 	
 	return list

@@ -20,6 +20,7 @@ localization.enUS.lua
 localization.zhCN.lua
 localization.korKR.lua
 localization.zhTW.lua
+localization.deDE.lua
 
 SimpleBuffBars.lua
 filters.lua

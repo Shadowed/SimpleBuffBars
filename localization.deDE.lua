@@ -68,10 +68,10 @@ SimpleBB.L = setmetatable({
 	["Sets the bar color to the buff type, if it's a buff light blue, temporary weapon enchants purple, debuffs will be colored by magic type, or red if none."] = "Stellt die Leistenfarbe nach ihrem Typ ein, Buffs in hellblau, temporäre Waffenverzauberung in lila, Debuffs je nach Magietyp oder wenn es kein Buff ist rot.",
 	
 	["Color"] = "Farbe",
-	["Bar color and background color, if color by type is enabled then this only applies to buffs and tracking."] = "Leisten- und Hintergrundfarbe. Wenn die Option "Nach Typ einfärben" aktiviert ist, dann gilt es nur für Buffs und Suche.",
+	["Bar color and background color, if color by type is enabled then this only applies to buffs and tracking."] = "Leisten- und Hintergrundfarbe. Wenn die Option \"Nach Typ einfärben\" aktiviert ist, dann gilt es nur für Buffs und Suche.",
 
 	["Temporary enchant colors"] = "Farbe für temporäre Waffenverzauberungen",
-	["Bar and background color for temporary weapon enchants, only used if color by type is enabled."] = "Leisten- und Hintergrundfarbe für temporäre Waffenverzauberungen, wird nur übernommen wenn die Option "Nach Typ einfärben" aktiviert ist.",
+	["Bar and background color for temporary weapon enchants, only used if color by type is enabled."] = "Leisten- und Hintergrundfarbe für temporäre Waffenverzauberungen, wird nur übernommen wenn die Option \"Nach Typ einfärben\" aktiviert ist.",
 	
 	["Fill timeless buffs"] = "Farbe für unbegrenzte Buffs",
 	["Buffs without a duration will have the status bar shown as filled in, instead of empty."] = "Buffs mit einer unbegrenzten Dauer werden mit angezeigten Farbe gefüllt.",
@@ -114,7 +114,7 @@ SimpleBB.L = setmetatable({
 	["Display"] = "Anzeige",
 
 	["Filters"] = "Filter",
-	["Allows you to reduce the amount of buffs that are shown by using different filters to hide things that are not relevant to your current talents.\n\nThis will filter things that are not directly related to the filter type, the Physical filter will hide things like Flametongue Totem, or Divine Spirit, while the Caster filter will hide Windfury Totem or Battle Shout."] = Ermöglicht es die Anzahl der angezeigten Buffs an Hand verschiedener Filter zu reduzieren und so die nicht relevanten auszublenden\n\n.Es gibt den physischen und den Zauberfilter. Beim physischen Filter werden Buffs wie Totem der Flammenzuge oder Göttlicher Wille ausblendet, während beim Zauberfilter Buffs wie Totem des Windzorns oder Kriegsruf ausgeblendet werden.",
+	["Allows you to reduce the amount of buffs that are shown by using different filters to hide things that are not relevant to your current talents.\n\nThis will filter things that are not directly related to the filter type, the Physical filter will hide things like Flametongue Totem, or Divine Spirit, while the Caster filter will hide Windfury Totem or Battle Shout."] = "Ermöglicht es die Anzahl der angezeigten Buffs an Hand verschiedener Filter zu reduzieren und so die nicht relevanten auszublenden\n\n.Es gibt den physischen und den Zauberfilter. Beim physischen Filter werden Buffs wie Totem der Flammenzuge oder Göttlicher Wille ausblendet, während beim Zauberfilter Buffs wie Totem des Windzorns oder Kriegsruf ausgeblendet werden.",
 
 	["Auto filter"] = "Automatischer Filter",
 	["Automatically enables the physical or caster filters based on talents and class."] = "Schalten anhand der Talente und Klase automatisch den physischen Filter oder den Zauberfilter ein.",
